@@ -54,12 +54,13 @@
         app:summaryEntries="@array/reviewing_summary_entries">
     </com.ichi2.preferences.HeaderPreference>
 
-    <!-- Sync Preferences -->
+    <!-- Sync Preferences - hidden for Tibetan MVP -->
     <com.ichi2.preferences.HeaderPreference
         android:fragment="com.ichi2.anki.preferences.SyncSettingsFragment"
         android:key="@string/pref_sync_screen_key"
         android:title="@string/pref_cat_sync"
         android:icon="@drawable/ic_sync"
+        android:visible="false"
         app:summaryEntries="@array/sync_summary_entries">
     </com.ichi2.preferences.HeaderPreference>
 
@@ -143,5 +144,6 @@
         android:key="@string/about_screen_key"
         android:icon="@drawable/ic_outline_info_24"
         android:title="@string/pref_cat_about_title"
-        android:fragment="com.ichi2.anki.preferences.AboutFragment"/>
+        android:fragment="com.ichi2.anki.preferences.AboutFragment"
+        android:visible="false"/>
 </PreferenceScreen>

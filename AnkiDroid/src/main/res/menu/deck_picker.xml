@@ -17,12 +17,18 @@
         android:icon="@drawable/ic_sync"
         android:title="@string/button_sync"
         ankidroid:actionProviderClass="com.ichi2.anki.SyncActionProvider"
+        android:visible="false"
         ankidroid:showAsAction="always"/>
     <item
         android:id="@+id/action_undo"
         ankidroid:showAsAction="never"
         android:visible="false"
         tools:title="Undo X"/>
+    <item
+        android:id="@+id/action_add_from_photo"
+        android:icon="@drawable/ic_camera"
+        android:title="@string/add_cards_from_photo"
+        ankidroid:showAsAction="never"/>
     <item
         android:id="@+id/checks"
         android:title="@string/checks_action"

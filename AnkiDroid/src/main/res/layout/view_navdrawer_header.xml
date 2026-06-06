@@ -5,6 +5,7 @@
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="?attr/navDrawerImage"
-        android:scaleType="centerCrop" />
+        android:background="#000000"
+        android:src="@drawable/nav_drawer_logo"
+        android:scaleType="fitCenter" />
 </FrameLayout>

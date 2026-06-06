@@ -1298,6 +1298,17 @@ open class DeckPicker :
                 showImportDialog()
                 return true
             }
+            R.id.action_add_from_photo -> {
+                Timber.i("DeckPicker:: Add cards from photo pressed")
+                launchCatchingTask {
+                    val deckId = withCol { decks.selected() }
+                    startActivity(
+                        com.ichi2.anki.tibetan.PhotoVocabImportActivity
+                            .getIntent(this@DeckPicker, deckId),
+                    )
+                }
+                return true
+            }
             R.id.action_check_database -> {
                 Timber.i("DeckPicker:: Check database button pressed")
                 showDatabaseErrorDialog(DatabaseErrorDialogType.DIALOG_CONFIRM_DATABASE_CHECK)

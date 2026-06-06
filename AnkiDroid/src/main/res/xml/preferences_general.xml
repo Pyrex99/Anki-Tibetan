@@ -32,18 +32,26 @@
             android:icon="@drawable/ic_language_black_24dp"
             android:title="@string/language"
             app:useSimpleSummaryProvider="true"/>
+        <EditTextPreference
+            android:key="@string/anthropic_api_key_pref"
+            android:title="@string/anthropic_api_key_title"
+            android:summary="@string/anthropic_api_key_summary"
+            android:inputType="textNoSuggestions"
+            android:singleLine="true" />
         <ListPreference
             android:defaultValue="2"
             android:entries="@array/error_reporting_choice_labels"
             android:entryValues="@array/error_reporting_choice_values"
             android:key="@string/error_reporting_mode_key"
             android:title="@string/error_reporting_choice"
+            android:visible="false"
             app:useSimpleSummaryProvider="true"/>
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="@string/analytics_opt_in_key"
             android:summary="@string/analytics_summ"
-            android:title="@string/analytics_title" />
+            android:title="@string/analytics_title"
+            android:visible="false" />
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="@string/nav_drawer_gesture_key"

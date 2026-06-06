@@ -458,4 +458,8 @@ this formatter is used if the bind only applies to the answer">A: %s</string>
     <!--Keyboard shortcuts dialog-->
     <string name="open_settings" comment="Description of the shortcut that opens the app settings">Open settings</string>
     <string name="related_settings_title" comment="Title of the section for related settings">Related settings</string>
+
+    <!-- Photo vocab import (Tibetan) -->
+    <string name="anthropic_api_key_title">Anthropic API key</string>
+    <string name="anthropic_api_key_summary">Used to read Tibetan vocabulary from photos. Stored only on this device.</string>
 </resources>

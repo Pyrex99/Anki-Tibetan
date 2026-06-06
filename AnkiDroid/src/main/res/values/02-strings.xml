@@ -452,5 +452,20 @@ opening the system text to speech settings fails">Failed to open text to speech 
     <string name="set_due_date_date_range">Date range</string>
 
     <string comment="Shown when retrying a running action" name="already_in_progress">Already in progress</string>
+
+    <!-- Photo vocab import (Tibetan) -->
+    <string name="add_cards_from_photo">Add cards from photo</string>
+    <string name="photo_import_title">Review cards</string>
+    <string name="photo_import_source_camera">Take photo</string>
+    <string name="photo_import_source_gallery">Choose from gallery</string>
+    <string name="photo_import_choose_source">Add cards from photo</string>
+    <string name="photo_import_reading">Reading words from photo…</string>
+    <string name="photo_import_add_cards">Add %d cards</string>
+    <string name="photo_import_added">Added %d cards</string>
+    <string name="photo_import_no_api_key">Set your Anthropic API key in Settings → General first.</string>
+    <string name="photo_import_field_tibetan">Tibetan</string>
+    <string name="photo_import_field_english">English</string>
+    <string name="photo_import_none_selected">No cards selected.</string>
+    <string name="photo_import_notetype_missing">Could not find the Basic note type.</string>
 </resources>
 
