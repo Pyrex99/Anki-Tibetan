@@ -1324,16 +1324,16 @@ open class DeckPicker :
             R.id.action_add_from_photo -> {
                 Timber.i("DeckPicker:: Add cards from photo pressed")
                 startActivity(
-                    com.ichi2.anki.tibetan.PhotoVocabImportActivity
-                        .getIntent(this, com.ichi2.anki.tibetan.PhotoVocabImportActivity.Mode.PHOTO),
+                    com.ichi2.anki.tibetan.AddWordsActivity
+                        .getIntent(this, null),
                 )
                 return true
             }
             R.id.action_ask_claude -> {
                 Timber.i("DeckPicker:: Ask Claude pressed")
                 startActivity(
-                    com.ichi2.anki.tibetan.PhotoVocabImportActivity
-                        .getIntent(this, com.ichi2.anki.tibetan.PhotoVocabImportActivity.Mode.ASK),
+                    com.ichi2.anki.tibetan.AddWordsActivity
+                        .getIntent(this, null),
                 )
                 return true
             }

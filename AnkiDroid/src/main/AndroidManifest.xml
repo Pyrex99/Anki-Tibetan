@@ -312,7 +312,7 @@
         </activity>
 
         <activity
-            android:name="com.ichi2.anki.tibetan.PhotoVocabImportActivity"
+            android:name="com.ichi2.anki.tibetan.AddWordsActivity"
             android:exported="false"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:parentActivityName=".DeckPicker"

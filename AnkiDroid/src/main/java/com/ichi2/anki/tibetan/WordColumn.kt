@@ -9,6 +9,8 @@ package com.ichi2.anki.tibetan
 
 import android.content.Context
 import androidx.core.content.edit
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.ichi2.anki.R
 import com.ichi2.anki.common.preferences.sharedPrefs
 import java.text.DateFormat
 import java.util.Date
@@ -53,6 +55,26 @@ enum class WordColumn(
         fun enabled(context: Context): List<WordColumn> {
             val saved = context.sharedPrefs().getStringSet(PREF_KEY, null)
             return entries.filter { if (saved == null) it.defaultOn else it.name in saved }
+        }
+
+        /** The ⋮ → Columns dialog; saves the choice and passes it to [onChosen]. */
+        fun showChooser(
+            context: Context,
+            current: List<WordColumn>,
+            onChosen: (List<WordColumn>) -> Unit,
+        ) {
+            val all = entries
+            val checked = all.map { it in current }.toBooleanArray()
+            MaterialAlertDialogBuilder(context)
+                .setTitle("Columns")
+                .setMultiChoiceItems(all.map { it.label }.toTypedArray(), checked) { _, which, isChecked ->
+                    checked[which] = isChecked
+                }.setPositiveButton(R.string.dialog_ok) { _, _ ->
+                    val chosen = all.filterIndexed { i, _ -> checked[i] }.ifEmpty { listOf(TIBETAN) }
+                    setEnabled(context, chosen)
+                    onChosen(chosen)
+                }.setNegativeButton(R.string.dialog_cancel, null)
+                .show()
         }
 
         fun setEnabled(

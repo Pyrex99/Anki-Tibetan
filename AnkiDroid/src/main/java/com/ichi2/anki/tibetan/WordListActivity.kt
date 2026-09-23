@@ -228,21 +228,12 @@ class WordListActivity : AnkiActivity() {
     }
 
     private fun showColumnsDialog() {
-        val all = WordColumn.entries
-        val checked = all.map { it in columns }.toBooleanArray()
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Columns")
-            .setMultiChoiceItems(all.map { it.label }.toTypedArray(), checked) { _, which, isChecked ->
-                checked[which] = isChecked
-            }.setPositiveButton(R.string.dialog_ok) { _, _ ->
-                val chosen = all.filterIndexed { i, _ -> checked[i] }.ifEmpty { listOf(WordColumn.TIBETAN) }
-                WordColumn.setEnabled(this, chosen)
-                columns = chosen
-                if (sortColumn !in columns) sortColumn = null
-                buildHeader()
-                adapter.notifyDataSetChanged()
-            }.setNegativeButton(R.string.dialog_cancel, null)
-            .show()
+        WordColumn.showChooser(this, columns) { chosen ->
+            columns = chosen
+            if (sortColumn !in columns) sortColumn = null
+            buildHeader()
+            adapter.notifyDataSetChanged()
+        }
     }
 
     private fun onWordLongPressed(word: Word) {

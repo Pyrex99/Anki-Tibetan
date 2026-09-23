@@ -1,15 +1,15 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Tibetan fork: the "Add cards" chooser, from the home screen's + button
- * (adds to the Library) or a deck's Add cards button (Library + that deck).
+ * Tibetan fork: what the "+" / Add cards does.
+ *  - Library / home: straight to the Add cards screen.
+ *  - Inside a deck: "New cards" (Add cards screen) or "From another deck" (word picker).
  */
 
 package com.ichi2.anki.tibetan
 
 import androidx.fragment.app.FragmentActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.ichi2.anki.tibetan.PhotoVocabImportActivity.Mode
 
 object AddCards {
     /** @param playlist deck to add to (as well as the Library); null = Library only */
@@ -17,28 +17,17 @@ object AddCards {
         activity: FragmentActivity,
         playlist: String?,
     ) {
-        val options = mutableListOf<Pair<String, () -> Unit>>()
-        if (playlist != null) {
-            options += "From Library / other decks" to {
-                activity.startActivity(WordPickerActivity.getIntent(activity, playlist, isNew = false))
-            }
+        if (playlist == null) {
+            activity.startActivity(AddWordsActivity.getIntent(activity, null))
+            return
         }
-        options += "Type them in" to { open(activity, Mode.MANUAL, playlist) }
-        options += "Type English — Claude fills in Tibetan" to { open(activity, Mode.MANUAL, playlist) }
-        options += "Ask Claude (e.g. “ten new verbs”)" to { open(activity, Mode.ASK, playlist) }
-        options += "From a photo" to { open(activity, Mode.PHOTO, playlist) }
-
         MaterialAlertDialogBuilder(activity)
-            .setTitle(if (playlist == null) "Add cards" else "Add cards to ${playlist.substringAfterLast("::")}")
-            .setItems(options.map { it.first }.toTypedArray()) { _, which -> options[which].second() }
-            .show()
-    }
-
-    private fun open(
-        activity: FragmentActivity,
-        mode: Mode,
-        playlist: String?,
-    ) {
-        activity.startActivity(PhotoVocabImportActivity.getIntent(activity, mode, playlist))
+            .setTitle("Add cards to ${playlist.substringAfterLast("::")}")
+            .setItems(arrayOf("New cards", "From Library / another deck")) { _, which ->
+                when (which) {
+                    0 -> activity.startActivity(AddWordsActivity.getIntent(activity, playlist))
+                    1 -> activity.startActivity(WordPickerActivity.getIntent(activity, playlist, isNew = false))
+                }
+            }.show()
     }
 }

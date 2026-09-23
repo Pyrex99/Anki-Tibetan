@@ -10,11 +10,17 @@ package com.ichi2.anki.tibetan
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.TextUtils
+import android.util.TypedValue
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -45,7 +51,13 @@ class WordPickerActivity : AnkiActivity() {
     private lateinit var includeAll: MaterialCheckBox
     private lateinit var saveButton: MaterialButton
     private lateinit var sourceButton: MaterialButton
+    private lateinit var header: LinearLayout
     private var query = ""
+    private var columns: List<WordColumn> = emptyList()
+
+    /** newest first by default, so words you just added are easy to find */
+    private var sortColumn: WordColumn = WordColumn.ADDED
+    private var sortDescending = true
     private val adapter = PickAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +88,9 @@ class WordPickerActivity : AnkiActivity() {
             query = it?.toString().orEmpty()
             applyFilter()
         }
+        header = findViewById(R.id.header)
+        columns = WordColumn.enabled(this)
+        buildHeader()
         sourceButton = findViewById(R.id.source_button)
         sourceButton.setOnClickListener { chooseSource() }
         findViewById<RecyclerView>(R.id.words).apply {
@@ -115,13 +130,81 @@ class WordPickerActivity : AnkiActivity() {
 
     private fun applyFilter() {
         val q = query.trim().lowercase()
-        visible =
+        val filtered =
             if (q.isEmpty()) {
                 candidates
             } else {
-                candidates.filter { it.tibetan.lowercase().contains(q) || it.english.lowercase().contains(q) }
+                candidates.filter {
+                    it.tibetan.lowercase().contains(q) ||
+                        it.english.lowercase().contains(q) ||
+                        it.tags.any { t -> t.lowercase().contains(q) }
+                }
             }
+        val sort = sortColumn
+
+        @Suppress("UNCHECKED_CAST")
+        val comparator = compareBy<Word> { sort.sortKey(it) as Comparable<Any> }
+        visible = filtered.sortedWith(if (sortDescending) comparator.reversed() else comparator)
         refresh()
+    }
+
+    private fun buildHeader() {
+        header.removeAllViews()
+        for (column in columns) {
+            val arrow =
+                when {
+                    sortColumn != column -> ""
+                    sortDescending -> " ↓"
+                    else -> " ↑"
+                }
+            header.addView(
+                cell(column, column.label + arrow).apply {
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    setOnClickListener {
+                        if (sortColumn == column) {
+                            sortDescending = !sortDescending
+                        } else {
+                            sortColumn = column
+                            sortDescending = column == WordColumn.ADDED
+                        }
+                        buildHeader()
+                        applyFilter()
+                    }
+                },
+            )
+        }
+    }
+
+    private fun cell(
+        column: WordColumn,
+        text: String,
+    ): TextView =
+        TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, column.weight)
+            this.text = text
+            setPadding(4, 0, 4, 0)
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
+        }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(0, MENU_COLUMNS, 0, "Columns")
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId != MENU_COLUMNS) return super.onOptionsItemSelected(item)
+        WordColumn.showChooser(this, columns) { chosen ->
+            columns = chosen
+            if (sortColumn !in columns) {
+                sortColumn = WordColumn.ADDED
+                sortDescending = true
+            }
+            buildHeader()
+            applyFilter()
+        }
+        return true
     }
 
     private fun refresh() {
@@ -144,8 +227,7 @@ class WordPickerActivity : AnkiActivity() {
             view: View,
         ) : RecyclerView.ViewHolder(view) {
             val checkbox: MaterialCheckBox = view.findViewById(R.id.checkbox)
-            val tibetan: TextView = view.findViewById(R.id.tibetan)
-            val english: TextView = view.findViewById(R.id.english)
+            val cells: LinearLayout = view.findViewById(R.id.cells)
         }
 
         override fun onCreateViewHolder(
@@ -160,8 +242,14 @@ class WordPickerActivity : AnkiActivity() {
             position: Int,
         ) {
             val word = visible[position]
-            holder.tibetan.text = word.tibetan
-            holder.english.text = word.english
+            holder.cells.removeAllViews()
+            for (column in columns) {
+                holder.cells.addView(
+                    cell(column, column.text(word)).apply {
+                        if (column == WordColumn.TIBETAN) setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                    },
+                )
+            }
             holder.checkbox.isChecked = word.noteId in selected
             holder.itemView.setOnClickListener {
                 if (!selected.remove(word.noteId)) selected.add(word.noteId)
@@ -173,6 +261,7 @@ class WordPickerActivity : AnkiActivity() {
     companion object {
         private const val EXTRA_PLAYLIST = "playlist"
         private const val EXTRA_IS_NEW = "isNew"
+        private const val MENU_COLUMNS = 1
 
         fun getIntent(
             context: Context,
