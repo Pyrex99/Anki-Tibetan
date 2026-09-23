@@ -329,6 +329,12 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:parentActivityName=".DeckPicker"
             />
+        <activity
+            android:name="com.ichi2.anki.tibetan.StatsActivity"
+            android:exported="false"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:parentActivityName=".DeckPicker"
+            />
 
         <!-- Context menu item name is the label, context is the system language -->
         <!-- Note: This appears to require that the target label is variable -->

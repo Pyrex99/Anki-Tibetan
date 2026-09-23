@@ -331,7 +331,28 @@ object Library {
         }
         val noteIds = words(col, playlist).map { it.noteId }
         if (noteIds.isEmpty()) return null
+        return startSession(col, "nid:" + noteIds.joinToString(","))
+    }
 
+    /**
+     * Drills specific words (e.g. the weakest ones from Statistics).
+     * @param ord only this direction's cards, or null for both
+     */
+    fun prepareDrill(
+        col: Collection,
+        noteIds: List<Long>,
+        ord: Int?,
+    ): DeckId? {
+        endStudySession(col)
+        if (noteIds.isEmpty()) return null
+        val direction = ord?.let { " card:${it + 1}" }.orEmpty()
+        return startSession(col, "nid:" + noteIds.joinToString(",") + direction)
+    }
+
+    private fun startSession(
+        col: Collection,
+        cardSearch: String,
+    ): DeckId {
         val existing = col.decks.idForName(STUDY_SESSION_NAME) ?: 0L
         val base = col.sched.getOrCreateFilteredDeck(existing)
         val update =
@@ -344,7 +365,7 @@ object Library {
                         reschedule = true
                         searchTerms.add(
                             searchTerm {
-                                search = "nid:" + noteIds.joinToString(",")
+                                search = cardSearch
                                 limit = SESSION_SIZE
                                 order = Deck.Filtered.SearchTerm.Order.RETRIEVABILITY_ASCENDING
                             },
