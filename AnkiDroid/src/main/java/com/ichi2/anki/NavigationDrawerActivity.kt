@@ -345,7 +345,11 @@ abstract class NavigationDrawerActivity(
 
                     R.id.nav_browser -> {
                         Timber.i("Navigating to card browser")
-                        openCardBrowser()
+                        // Tibetan fork: "Browse" is the Library word list
+                        startActivity(
+                            com.ichi2.anki.tibetan.WordListActivity
+                                .getIntent(this@NavigationDrawerActivity, null),
+                        )
                     }
 
                     R.id.nav_stats -> {

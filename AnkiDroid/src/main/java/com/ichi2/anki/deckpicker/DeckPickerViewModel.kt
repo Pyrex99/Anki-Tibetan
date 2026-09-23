@@ -395,6 +395,8 @@ class DeckPickerViewModel :
                     withCol {
                         // Tibetan fork: apply the study direction to any newly added words
                         try {
+                            com.ichi2.anki.tibetan.Library
+                                .migrateIfNeeded(this)
                             com.ichi2.anki.tibetan.StudyDirection
                                 .sync(this)
                         } catch (e: Exception) {
