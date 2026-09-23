@@ -415,6 +415,12 @@ open class Reviewer :
         }
 
         when (item.itemId) {
+            R.id.action_study_direction -> {
+                Timber.i("Reviewer:: Study direction pressed")
+                com.ichi2.anki.tibetan.StudyDirectionPicker.show(this) {
+                    launchCatchingTask { updateCardAndRedraw() }
+                }
+            }
             android.R.id.home -> {
                 Timber.i("Reviewer:: Home button pressed")
                 closeReviewer(RESULT_OK)

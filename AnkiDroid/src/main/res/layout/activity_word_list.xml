@@ -12,12 +12,27 @@
         android:layout_height="?attr/actionBarSize"
         app:navigationIcon="?attr/homeAsUpIndicator" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/study_button"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="4dp" />
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/direction_button"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/study_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/summary"

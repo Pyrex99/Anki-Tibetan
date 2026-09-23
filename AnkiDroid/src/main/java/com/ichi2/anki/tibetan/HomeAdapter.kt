@@ -26,6 +26,7 @@ data class RoundupCounts(
     val new: Int,
     val learning: Int,
     val review: Int,
+    val direction: StudyDirection,
 ) {
     val total get() = new + learning + review
 }
@@ -55,7 +56,7 @@ class HomeAdapter(
         ) : Item
     }
 
-    private var counts = RoundupCounts(0, 0, 0)
+    private var counts = RoundupCounts(0, 0, 0, StudyDirection.TIBETAN_FIRST)
     private var libraryWordCount = 0
     private var playlists: List<PlaylistInfo> = emptyList()
     private val collapsed = mutableSetOf<String>()
@@ -124,9 +125,10 @@ class HomeAdapter(
                 holder.title.text = "Roundup"
                 holder.subtitle.text =
                     if (item.counts.total == 0) {
-                        "All done for today"
+                        "All done for today · ${item.counts.direction.label}"
                     } else {
-                        "${item.counts.review} to review · ${item.counts.learning} learning · ${item.counts.new} new"
+                        "${item.counts.review} to review · ${item.counts.learning} learning · ${item.counts.new} new" +
+                            "\n${item.counts.direction.label}"
                     }
                 holder.action.isVisible = true
                 holder.action.text = if (item.counts.total == 0) "" else "Study"

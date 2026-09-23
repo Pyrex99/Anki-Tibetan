@@ -49,6 +49,9 @@ enum class StudyDirection(
         ) {
             col.config.set(CONFIG_KEY, direction.name)
             sync(col)
+            // mid-session: refill the playlist session with the new direction's cards
+            val session = col.decks.idForName(Library.STUDY_SESSION_NAME)
+            if (session != null && col.decks.selected() == session) col.sched.rebuildFilteredDeck(session)
         }
 
         /**

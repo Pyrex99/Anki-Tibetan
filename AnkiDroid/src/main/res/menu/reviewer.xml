@@ -5,6 +5,10 @@
     xmlns:ankidroid="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layoutDirection="locale">
+    <item
+        android:id="@+id/action_study_direction"
+        android:title="@string/study_direction"
+        ankidroid:showAsAction="never"/>
 
     <item
         android:id="@+id/action_undo"

@@ -49,6 +49,7 @@ class WordListActivity : AnkiActivity() {
     private lateinit var header: LinearLayout
     private lateinit var summary: TextView
     private lateinit var studyButton: MaterialButton
+    private lateinit var directionButton: MaterialButton
     private val adapter = WordAdapter()
 
     private val studyLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { reload() }
@@ -68,6 +69,10 @@ class WordListActivity : AnkiActivity() {
         studyButton = findViewById(R.id.study_button)
         studyButton.text = if (playlist == null) "Start Roundup" else "Study this deck"
         studyButton.setOnClickListener { study() }
+        directionButton = findViewById(R.id.direction_button)
+        directionButton.setOnClickListener {
+            StudyDirectionPicker.show(this) { updateDirectionButton(it) }
+        }
         findViewById<EditText>(R.id.search).doAfterTextChanged {
             query = it?.toString().orEmpty()
             applyFilterAndSort()
@@ -91,11 +96,13 @@ class WordListActivity : AnkiActivity() {
 
     private fun reload() {
         launchCatchingTask {
-            words =
+            val (loaded, direction) =
                 withCol {
                     Library.endStudySession(this)
-                    Library.words(this, playlist)
+                    Library.words(this, playlist) to StudyDirection.get(this)
                 }
+            words = loaded
+            updateDirectionButton(direction)
             val subdecks = playlist?.let { p -> withCol { Library.playlistNames(this) }.count { it.startsWith("$p::") } } ?: 0
             summary.text =
                 buildString {
@@ -105,6 +112,10 @@ class WordListActivity : AnkiActivity() {
                 }
             applyFilterAndSort()
         }
+    }
+
+    private fun updateDirectionButton(direction: StudyDirection) {
+        directionButton.text = direction.label
     }
 
     private fun applyFilterAndSort() {

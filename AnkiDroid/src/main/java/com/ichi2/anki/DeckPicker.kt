@@ -2102,6 +2102,9 @@ open class DeckPicker :
                             new = node?.newCount ?: 0,
                             learning = node?.lrnCount ?: 0,
                             review = node?.revCount ?: 0,
+                            direction =
+                                com.ichi2.anki.tibetan.StudyDirection
+                                    .get(this),
                         ),
                         noteCount(),
                         com.ichi2.anki.tibetan.Library
@@ -2114,33 +2117,8 @@ open class DeckPicker :
 
     /** Tibetan fork: choose Tibetan first / English first / Mix */
     private fun showStudyDirectionDialog() {
-        launchCatchingTask {
-            val directions = com.ichi2.anki.tibetan.StudyDirection.entries
-            val current =
-                withCol {
-                    com.ichi2.anki.tibetan.StudyDirection
-                        .get(this)
-                }
-            AlertDialog
-                .Builder(this@DeckPicker)
-                .setTitle(R.string.study_direction)
-                .setSingleChoiceItems(
-                    directions.map { it.label }.toTypedArray(),
-                    directions.indexOf(current),
-                ) { dialog, which ->
-                    dialog.dismiss()
-                    launchCatchingTask {
-                        withProgress {
-                            withCol {
-                                com.ichi2.anki.tibetan.StudyDirection
-                                    .set(this, directions[which])
-                            }
-                        }
-                        updateDeckList()
-                    }
-                }.setNegativeButton(R.string.dialog_cancel, null)
-                .show()
-        }
+        com.ichi2.anki.tibetan.StudyDirectionPicker
+            .show(this) { updateDeckList() }
     }
 
     /**
