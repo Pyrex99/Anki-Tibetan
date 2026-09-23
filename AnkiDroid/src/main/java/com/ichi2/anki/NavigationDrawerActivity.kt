@@ -39,11 +39,9 @@ import com.ichi2.anki.common.preferences.sharedPrefs
 import com.ichi2.anki.common.utils.android.HandlerUtils
 import com.ichi2.anki.dialogs.help.HelpDialog
 import com.ichi2.anki.libanki.CardId
-import com.ichi2.anki.pages.StatisticsDestination
 import com.ichi2.anki.preferences.PreferencesActivity
 import com.ichi2.anki.utils.ext.showDialogFragment
 import com.ichi2.anki.workarounds.FullDraggableContainerFix
-import com.ichi2.utils.IntentUtil
 import timber.log.Timber
 
 abstract class NavigationDrawerActivity(
@@ -191,6 +189,14 @@ abstract class NavigationDrawerActivity(
                             pendingRunnable = null
                         }
                     }, 100)
+                }
+
+                override fun onDrawerStateChanged(newState: Int) {
+                    super.onDrawerStateChanged(newState)
+                    // Tibetan fork: the second item is named after the deck you were last in
+                    navigationView?.menu?.findItem(R.id.nav_browser)?.title =
+                        com.ichi2.anki.tibetan.WordListActivity
+                            .lastDeckLabel(this@NavigationDrawerActivity)
                 }
 
                 override fun onDrawerOpened(drawerView: View) {
@@ -345,8 +351,16 @@ abstract class NavigationDrawerActivity(
                     }
 
                     R.id.nav_browser -> {
-                        Timber.i("Navigating to card browser")
-                        openCardBrowser()
+                        Timber.i("Navigating to current deck")
+                        // Tibetan fork: back to the word list of the deck you were last in
+                        startActivity(
+                            com.ichi2.anki.tibetan.WordListActivity
+                                .getIntent(
+                                    this@NavigationDrawerActivity,
+                                    com.ichi2.anki.tibetan.WordListActivity
+                                        .lastDeck(this@NavigationDrawerActivity),
+                                ).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                        )
                     }
 
                     R.id.nav_stats -> {
@@ -363,12 +377,7 @@ abstract class NavigationDrawerActivity(
                         Timber.i("Navigating to help")
                         showDialogFragment(HelpDialog.newHelpInstance())
                     }
-
-                    R.id.support_ankidroid -> {
-                        Timber.i("Navigating to support AnkiDroid")
-                        val canRateApp = IntentUtil.canOpenIntent(this, AnkiDroidApp.getMarketIntent(this))
-                        showDialogFragment(HelpDialog.newSupportInstance(canRateApp))
-                    }
+                    // Tibetan MVP: "Support AnkiDroid" drawer item removed.
                 }
             }
         closeDrawer()
@@ -388,9 +397,8 @@ abstract class NavigationDrawerActivity(
      */
     protected fun openStatistics() {
         Timber.i("launching statistics")
-        val intent =
-            StatisticsDestination().toIntent(this)
-        startActivity(intent)
+        // Tibetan fork: our own Statistics screen
+        startActivity(Intent(this, com.ichi2.anki.tibetan.StatsActivity::class.java))
     }
 
     /**

@@ -393,6 +393,19 @@ class DeckPickerViewModel :
                 Timber.d("Refreshing deck list")
                 val (deckDueTree, collectionHasNoCards) =
                     withCol {
+                        // Tibetan fork: apply the study direction to any newly added words
+                        try {
+                            com.ichi2.anki.tibetan.Library
+                                .migrateIfNeeded(this)
+                            com.ichi2.anki.tibetan.WordListImport
+                                .importPending(this, com.ichi2.anki.AnkiDroidApp.instance)
+                            com.ichi2.anki.tibetan.StudyDirection
+                                .sync(this)
+                            com.ichi2.anki.tibetan.CardStyle
+                                .ensure(this, com.ichi2.anki.AnkiDroidApp.instance)
+                        } catch (e: Exception) {
+                            Timber.w(e, "Could not apply study direction")
+                        }
                         Pair(sched.deckDueTree(), isEmpty)
                     }
                 dueTree = deckDueTree

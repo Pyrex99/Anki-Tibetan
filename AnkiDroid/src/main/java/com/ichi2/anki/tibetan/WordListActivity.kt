@@ -1,0 +1,354 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * Tibetan fork: the word list for the Library or a playlist deck.
+ * Shows the chosen columns (Tibetan / English / scores / added / tags), sortable
+ * by tapping a header, with a Study button on top.
+ */
+
+package com.ichi2.anki.tibetan
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.util.TypedValue
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.edit
+import androidx.core.widget.doAfterTextChanged
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.ichi2.anki.AnkiActivity
+import com.ichi2.anki.CollectionManager.withCol
+import com.ichi2.anki.R
+import com.ichi2.anki.Reviewer
+import com.ichi2.anki.common.preferences.sharedPrefs
+import com.ichi2.anki.common.utils.android.showThemedToast
+import com.ichi2.anki.launchCatchingTask
+import com.ichi2.anki.noteeditor.NoteEditorLauncher
+import com.ichi2.anki.withProgress
+
+class WordListActivity : AnkiActivity() {
+    /** null = the Library */
+    private var playlist: String? = null
+
+    private var words: List<Word> = emptyList()
+    private var visible: List<Word> = emptyList()
+    private var columns: List<WordColumn> = emptyList()
+    private var query = ""
+    private var sortColumn: WordColumn? = null
+    private var sortDescending = false
+
+    private lateinit var header: LinearLayout
+    private lateinit var summary: TextView
+    private lateinit var studyButton: MaterialButton
+    private lateinit var directionButton: MaterialButton
+    private val palette by lazy { TibetanTheme.palette(this) }
+    private val adapter = WordAdapter()
+
+    private val studyLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { reload() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (showedActivityFailedScreen(savedInstanceState)) return
+        setContentView(R.layout.activity_word_list)
+        playlist = intent.getStringExtra(EXTRA_PLAYLIST)
+
+        enableToolbar().setDisplayHomeAsUpEnabled(true)
+        updateTitle()
+        findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+
+        header = findViewById(R.id.header)
+        summary = findViewById(R.id.summary)
+        studyButton = findViewById(R.id.study_button)
+        studyButton.text = if (playlist == null) "Start Roundup" else "Study this deck"
+        studyButton.setOnClickListener { study() }
+        directionButton = findViewById(R.id.direction_button)
+        directionButton.setOnClickListener {
+            StudyDirectionPicker.show(this) { updateDirectionButton(it) }
+        }
+        findViewById<EditText>(R.id.search).doAfterTextChanged {
+            query = it?.toString().orEmpty()
+            applyFilterAndSort()
+        }
+        findViewById<RecyclerView>(R.id.words).apply {
+            layoutManager = LinearLayoutManager(this@WordListActivity)
+            adapter = this@WordListActivity.adapter
+        }
+        findViewById<View>(R.id.add_fab).setOnClickListener { AddCards.show(this, playlist) }
+        TibetanTheme.styleButton(studyButton, palette, filled = true)
+        TibetanTheme.styleButton(directionButton, palette, filled = false)
+        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.add_fab).apply {
+            backgroundTintList =
+                android.content.res.ColorStateList
+                    .valueOf(palette.primary)
+            supportBackgroundTintList =
+                android.content.res.ColorStateList
+                    .valueOf(palette.primary)
+            imageTintList =
+                android.content.res.ColorStateList
+                    .valueOf(palette.onPrimary)
+        }
+        columns = WordColumn.enabled(this)
+        buildHeader()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sharedPrefs().edit { putString(PREF_LAST_DECK, playlist.orEmpty()) }
+        reload()
+    }
+
+    private fun updateTitle() {
+        supportActionBar?.title = playlist?.let { Library.displayName(it) } ?: Library.LIBRARY_NAME
+    }
+
+    private fun reload() {
+        launchCatchingTask {
+            // the deck may have been renamed or deleted elsewhere
+            val p = playlist
+            if (p != null && !withCol { Library.exists(this, p) }) {
+                playlist = null
+                intent.putExtra(EXTRA_PLAYLIST, null as String?)
+                sharedPrefs().edit { putString(PREF_LAST_DECK, "") }
+                updateTitle()
+                studyButton.text = "Start Roundup"
+                invalidateOptionsMenu()
+            }
+            val (loaded, direction) =
+                withCol {
+                    Library.endStudySession(this)
+                    Library.words(this, playlist) to StudyDirection.get(this)
+                }
+            words = loaded
+            updateDirectionButton(direction)
+            val subdecks = playlist?.let { p -> withCol { Library.playlistNames(this) }.count { it.startsWith("$p::") } } ?: 0
+            summary.text =
+                buildString {
+                    append("${words.size} words")
+                    if (subdecks == 1) append(" · 1 subdeck")
+                    if (subdecks > 1) append(" · $subdecks subdecks")
+                    if (playlist != null) append(" · studies your ${Library.SESSION_SIZE} weakest")
+                }
+            applyFilterAndSort()
+        }
+    }
+
+    private fun updateDirectionButton(direction: StudyDirection) {
+        directionButton.text = direction.label
+    }
+
+    private fun applyFilterAndSort() {
+        val q = query.trim().lowercase()
+        var list =
+            if (q.isEmpty()) {
+                words
+            } else {
+                words.filter {
+                    it.tibetan.lowercase().contains(q) ||
+                        it.english.lowercase().contains(q) ||
+                        it.tags.any { t -> t.lowercase().contains(q) }
+                }
+            }
+        val sort = sortColumn
+        list =
+            if (sort == null) {
+                list.sortedByDescending { it.added }
+            } else {
+                @Suppress("UNCHECKED_CAST")
+                val comparator = compareBy<Word> { sort.sortKey(it) as Comparable<Any> }
+                list.sortedWith(if (sortDescending) comparator.reversed() else comparator)
+            }
+        visible = list
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun buildHeader() {
+        header.removeAllViews()
+        for (column in columns) {
+            val arrow =
+                when {
+                    sortColumn != column -> ""
+                    sortDescending -> " ↓"
+                    else -> " ↑"
+                }
+            header.addView(
+                column.headerCell(this, column.label + arrow, palette) {
+                    if (sortColumn == column) sortDescending = !sortDescending else sortColumn = column
+                    buildHeader()
+                    applyFilterAndSort()
+                },
+            )
+        }
+    }
+
+    private fun study() {
+        launchCatchingTask {
+            val did = withCol { Library.prepareStudy(this, playlist) }
+            if (did == null) {
+                showThemedToast(this@WordListActivity, "This deck has no words yet", true)
+                return@launchCatchingTask
+            }
+            val hasCards = withCol { sched.deckDueTree().find(did)?.let { it.newCount + it.lrnCount + it.revCount > 0 } == true }
+            if (!hasCards) {
+                showThemedToast(this@WordListActivity, "Nothing to study right now", true)
+                withCol { Library.endStudySession(this) }
+                return@launchCatchingTask
+            }
+            studyLauncher.launch(Reviewer.getIntent(this@WordListActivity))
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(0, MENU_COLUMNS, 0, "Columns")
+        if (playlist != null) {
+            menu.add(0, MENU_SUBDECK, 2, "Add subdeck")
+            menu.add(0, MENU_RENAME, 3, "Rename deck")
+            menu.add(0, MENU_DELETE, 4, "Delete deck")
+        }
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val p = playlist
+        when (item.itemId) {
+            MENU_COLUMNS -> showColumnsDialog()
+            MENU_SUBDECK -> if (p != null) PlaylistActions.newDeck(this, p)
+            MENU_RENAME ->
+                if (p != null) {
+                    PlaylistActions.rename(this, p) { newName ->
+                        playlist = newName
+                        intent.putExtra(EXTRA_PLAYLIST, newName)
+                        updateTitle()
+                        reload()
+                    }
+                }
+            MENU_DELETE -> if (p != null) PlaylistActions.delete(this, p) { finish() }
+            else -> return super.onOptionsItemSelected(item)
+        }
+        return true
+    }
+
+    private fun showColumnsDialog() {
+        WordColumn.showChooser(this, columns) { chosen ->
+            columns = chosen
+            if (sortColumn !in columns) sortColumn = null
+            buildHeader()
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun onWordLongPressed(word: Word) {
+        val p = playlist
+        val options = mutableListOf("Edit")
+        if (p != null) options.add("Remove from this deck")
+        options.add("Delete word")
+        MaterialAlertDialogBuilder(this)
+            .setTitle(word.tibetan)
+            .setItems(options.toTypedArray()) { _, which ->
+                when (options[which]) {
+                    "Edit" -> editWord(word)
+                    "Remove from this deck" ->
+                        launchCatchingTask {
+                            withCol { Library.removeWords(this, p!!, listOf(word.noteId)) }
+                            reload()
+                        }
+                    "Delete word" -> confirmDelete(word)
+                }
+            }.show()
+    }
+
+    private fun confirmDelete(word: Word) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete “${word.tibetan}”?")
+            .setMessage("Deletes the word from the Library and every deck, with its scores.")
+            .setPositiveButton("Delete") { _, _ ->
+                launchCatchingTask {
+                    withProgress { withCol { Library.deleteWords(this, listOf(word.noteId)) } }
+                    reload()
+                }
+            }.setNegativeButton(R.string.dialog_cancel, null)
+            .show()
+    }
+
+    private fun editWord(word: Word) {
+        startActivity(NoteEditorLauncher.EditNoteFromPreviewer(word.firstCardId).toIntent(this))
+    }
+
+    private inner class WordAdapter : RecyclerView.Adapter<WordAdapter.Holder>() {
+        inner class Holder(
+            val row: LinearLayout,
+        ) : RecyclerView.ViewHolder(row)
+
+        override fun onCreateViewHolder(
+            parent: ViewGroup,
+            viewType: Int,
+        ): Holder {
+            val row =
+                LinearLayout(parent.context).apply {
+                    layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(dp(12), dp(10), dp(12), dp(10))
+                    val outValue = TypedValue()
+                    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                    setBackgroundResource(outValue.resourceId)
+                }
+            return Holder(row)
+        }
+
+        override fun getItemCount() = visible.size
+
+        override fun onBindViewHolder(
+            holder: Holder,
+            position: Int,
+        ) {
+            val word = visible[position]
+            holder.row.removeAllViews()
+            for (column in columns) {
+                holder.row.addView(column.cell(holder.itemView.context, word, palette))
+            }
+            holder.row.setOnClickListener { editWord(word) }
+            holder.row.setOnLongClickListener {
+                onWordLongPressed(word)
+                true
+            }
+        }
+    }
+
+    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+
+    companion object {
+        private const val EXTRA_PLAYLIST = "playlist"
+        private const val PREF_LAST_DECK = "tibetanLastDeck"
+        private const val MENU_COLUMNS = 1
+        private const val MENU_SUBDECK = 3
+        private const val MENU_RENAME = 4
+        private const val MENU_DELETE = 5
+
+        /** The deck whose word list was open most recently; null = Library. */
+        fun lastDeck(context: Context): String? =
+            context
+                .sharedPrefs()
+                .getString(PREF_LAST_DECK, "")
+                .orEmpty()
+                .ifEmpty { null }
+
+        /** Side-menu label for [lastDeck], e.g. "Verbs › Irregular". */
+        fun lastDeckLabel(context: Context): String = lastDeck(context)?.let { Library.displayName(it) } ?: Library.LIBRARY_NAME
+
+        /** @param playlist null for the Library */
+        fun getIntent(
+            context: Context,
+            playlist: String?,
+        ): Intent = Intent(context, WordListActivity::class.java).putExtra(EXTRA_PLAYLIST, playlist)
+    }
+}

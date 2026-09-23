@@ -32,31 +32,52 @@
             android:icon="@drawable/ic_language_black_24dp"
             android:title="@string/language"
             app:useSimpleSummaryProvider="true"/>
+        <EditTextPreference
+            android:key="@string/anthropic_api_key_pref"
+            android:title="@string/anthropic_api_key_title"
+            android:summary="@string/anthropic_api_key_summary"
+            android:inputType="textNoSuggestions"
+            android:singleLine="true" />
+        <PreferenceCategory android:title="Daily study (Roundup)">
+            <EditTextPreference
+                android:key="tibetanNewPerDay"
+                android:persistent="false"
+                android:title="New words per day"
+                android:dialogTitle="New words per day" />
+            <EditTextPreference
+                android:key="tibetanReviewsPerDay"
+                android:persistent="false"
+                android:title="Max reviews per day"
+                android:dialogTitle="Max reviews per day" />
+        </PreferenceCategory>
         <ListPreference
             android:defaultValue="2"
             android:entries="@array/error_reporting_choice_labels"
             android:entryValues="@array/error_reporting_choice_values"
             android:key="@string/error_reporting_mode_key"
             android:title="@string/error_reporting_choice"
+            android:visible="false"
             app:useSimpleSummaryProvider="true"/>
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="@string/analytics_opt_in_key"
             android:summary="@string/analytics_summ"
-            android:title="@string/analytics_title" />
+            android:title="@string/analytics_title"
+            android:visible="false" />
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="@string/nav_drawer_gesture_key"
             android:summary="@string/gestures_fullscreen_nav_drawer_summary"
-            android:title="@string/gestures_full_screen_nav_drawer" />
-    <PreferenceCategory android:title="@string/pref_cat_editing">
+            android:title="@string/gestures_full_screen_nav_drawer"
+            android:visible="false" />
+    <PreferenceCategory android:title="@string/pref_cat_editing" android:visible="false">
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:title="@string/paste_as_png"
             android:maxLength="41"
             android:key="@string/paste_png_key"/>
     </PreferenceCategory>
-        <PreferenceCategory android:title="@string/pref_cat_studying">
+        <PreferenceCategory android:title="@string/pref_cat_studying" android:visible="false">
             <ListPreference
                 android:entries="@array/add_to_cur_labels"
                 android:entryValues="@array/add_to_cur_values"
@@ -71,7 +92,7 @@
         </PreferenceCategory>
         <!-- Title and summary are variable, handled in string:
             card_browser_enable_external_context_menu -->
-        <PreferenceCategory android:title="@string/pref_cat_system_wide">
+        <PreferenceCategory android:title="@string/pref_cat_system_wide" android:visible="false">
             <SwitchPreferenceCompat
                 android:id="@+id/anki_card_external_context_menu"
                 android:defaultValue="true"

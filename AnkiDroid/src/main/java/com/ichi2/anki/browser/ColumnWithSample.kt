@@ -44,7 +44,13 @@ class ColumnWithSample(
                 val matched = allColumns.getValue(column.ankiColumnKey)
                 val sampleValue = sampleRow?.getCells(column.ordinal)?.text
                 return ColumnWithSample(
-                    label = matched.getLabel(cardsOrNotes),
+                    label =
+                        if (column == CardBrowserColumn.QUESTION) {
+                            matched.getLabel(cardsOrNotes)
+                        } else {
+                            com.ichi2.anki.tibetan.TibetanBrowserColumns
+                                .label(column.ankiColumnKey, matched.getLabel(cardsOrNotes))
+                        },
                     columnType = column,
                     sampleValue = sampleValue,
                 )

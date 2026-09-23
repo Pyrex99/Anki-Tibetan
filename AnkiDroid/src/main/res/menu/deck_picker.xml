@@ -17,6 +17,7 @@
         android:icon="@drawable/ic_sync"
         android:title="@string/button_sync"
         ankidroid:actionProviderClass="com.ichi2.anki.SyncActionProvider"
+        android:visible="false"
         ankidroid:showAsAction="always"/>
     <item
         android:id="@+id/action_undo"
@@ -24,9 +25,26 @@
         android:visible="false"
         tools:title="Undo X"/>
     <item
+        android:id="@+id/action_study_direction"
+        android:title="@string/study_direction"
+        ankidroid:showAsAction="never"
+        android:visible="false"/>
+    <item
+        android:id="@+id/action_add_from_photo"
+        android:icon="@drawable/ic_camera"
+        android:title="@string/add_cards_from_photo"
+        ankidroid:showAsAction="never"
+        android:visible="false"/>
+    <item
+        android:id="@+id/action_ask_claude"
+        android:title="@string/ask_claude_for_words"
+        ankidroid:showAsAction="never"
+        android:visible="false"/>
+    <item
         android:id="@+id/checks"
         android:title="@string/checks_action"
-        ankidroid:showAsAction="never">
+        ankidroid:showAsAction="never"
+        android:visible="false">
         <menu>
             <!-- TR.databaseCheckTitle() -->
             <item
@@ -58,11 +76,13 @@
     <item
         android:id="@+id/action_model_browser_open"
         android:menuCategory="secondary"
-        android:title="@string/model_browser_label"/>
+        android:title="@string/model_browser_label"
+        android:visible="false"/>
     <item
         android:id="@+id/action_import"
         android:menuCategory="secondary"
-        android:title="@string/menu_import"/>
+        android:title="@string/menu_import"
+        android:visible="false"/>
     <item
         android:id="@+id/action_export_collection"
         android:menuCategory="secondary" />

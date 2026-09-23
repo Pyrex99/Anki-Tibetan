@@ -415,6 +415,12 @@ open class Reviewer :
         }
 
         when (item.itemId) {
+            R.id.action_study_direction -> {
+                Timber.i("Reviewer:: Study direction pressed")
+                com.ichi2.anki.tibetan.StudyDirectionPicker.show(this) {
+                    launchCatchingTask { updateCardAndRedraw() }
+                }
+            }
             android.R.id.home -> {
                 Timber.i("Reviewer:: Home button pressed")
                 closeReviewer(RESULT_OK)
@@ -1024,6 +1030,33 @@ open class Reviewer :
         } else {
             voicePlaybackIcon.setTitle(R.string.menu_enable_voice_playback)
         }
+
+        // Tibetan fork: keep Study direction, Undo/Redo, Edit, Suspend, Delete and the whiteboard
+        listOf(
+            R.id.action_flag,
+            R.id.action_add_note_reviewer,
+            R.id.action_card_info,
+            R.id.action_previous_card_info,
+            R.id.action_tag,
+            R.id.action_bury,
+            R.id.action_bury_card,
+            R.id.action_mark_card,
+            R.id.action_schedule,
+            R.id.action_replay,
+            R.id.action_toggle_mic_tool_bar,
+            R.id.action_select_tts,
+            R.id.action_open_deck_options,
+            R.id.action_toggle_auto_advance,
+            R.id.user_action_1,
+            R.id.user_action_2,
+            R.id.user_action_3,
+            R.id.user_action_4,
+            R.id.user_action_5,
+            R.id.user_action_6,
+            R.id.user_action_7,
+            R.id.user_action_8,
+            R.id.user_action_9,
+        ).forEach { menu.findItem(it)?.isVisible = false }
 
         increaseHorizontalPaddingOfOverflowMenuIcons(menu)
         tintOverflowMenuIcons(menu, skipIf = { isFlagItem(it) })

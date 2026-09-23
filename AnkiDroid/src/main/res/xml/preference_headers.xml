@@ -25,7 +25,8 @@
 
     <com.bytehamster.lib.preferencesearch.SearchPreference
         android:key="@string/search_preference_key"
-        app:textNoResults="@string/pref_search_no_results"/>
+        app:textNoResults="@string/pref_search_no_results"
+        android:visible="false"/>
 
     <!--  General Preferences -->
     <com.ichi2.preferences.HeaderPreference
@@ -43,7 +44,8 @@
         android:icon="@drawable/ic_cards_star"
         android:key="@string/new_reviewer_options_key"
         app:summaryEntries="@array/study_screen_summary_entries"
-        />
+        
+        android:visible="false"/>
 
     <!-- Reviewing Preferences -->
     <com.ichi2.preferences.HeaderPreference
@@ -51,15 +53,17 @@
         android:key="@string/pref_reviewing_screen_key"
         android:title="@string/pref_cat_reviewing"
         android:icon="@drawable/ic_flashcard_black"
-        app:summaryEntries="@array/reviewing_summary_entries">
+        app:summaryEntries="@array/reviewing_summary_entries"
+        android:visible="false">
     </com.ichi2.preferences.HeaderPreference>
 
-    <!-- Sync Preferences -->
+    <!-- Sync Preferences - hidden for Tibetan MVP -->
     <com.ichi2.preferences.HeaderPreference
         android:fragment="com.ichi2.anki.preferences.SyncSettingsFragment"
         android:key="@string/pref_sync_screen_key"
         android:title="@string/pref_cat_sync"
         android:icon="@drawable/ic_sync"
+        android:visible="false"
         app:summaryEntries="@array/sync_summary_entries">
     </com.ichi2.preferences.HeaderPreference>
 
@@ -102,7 +106,8 @@
         android:key="@string/pref_controls_screen_key"
         android:title="@string/pref_cat_controls"
         android:icon="@drawable/ic_touch"
-        app:summaryEntries="@array/controls_summary_entries">
+        app:summaryEntries="@array/controls_summary_entries"
+        android:visible="false">
     </com.ichi2.preferences.HeaderPreference>
 
     <!-- Accessibility -->
@@ -111,7 +116,8 @@
         android:key="@string/pref_accessibility_screen_key"
         android:title="@string/accessibility"
         android:icon="@drawable/ic_accessibility_24"
-        app:summaryEntries="@array/accessibility_summary_entries">
+        app:summaryEntries="@array/accessibility_summary_entries"
+        android:visible="false">
     </com.ichi2.preferences.HeaderPreference>
 
     <!-- Backup Limits Preferences -->
@@ -128,7 +134,8 @@
         android:key="@string/pref_advanced_screen_key"
         android:title="@string/pref_cat_advanced"
         android:icon="@drawable/ic_tune_white"
-        app:summaryEntries="@array/advanced_summary_entries">
+        app:summaryEntries="@array/advanced_summary_entries"
+        android:visible="false">
     </com.ichi2.preferences.HeaderPreference>
 
     <com.ichi2.preferences.HeaderPreference
@@ -143,5 +150,6 @@
         android:key="@string/about_screen_key"
         android:icon="@drawable/ic_outline_info_24"
         android:title="@string/pref_cat_about_title"
-        android:fragment="com.ichi2.anki.preferences.AboutFragment"/>
+        android:fragment="com.ichi2.anki.preferences.AboutFragment"
+        android:visible="false"/>
 </PreferenceScreen>

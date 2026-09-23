@@ -55,6 +55,34 @@ class GeneralSettingsFragment : SettingsFragment() {
                 launchCatchingTask { withCol { config.setBool(ConfigKey.Bool.ADDING_DEFAULTS_TO_CURRENT_DECK, "0" == newValue) } }
             }
         }
+        // Tibetan fork: daily limits for the Library (Roundup), from its deck options
+        for ((key, isNew) in listOf("tibetanNewPerDay" to true, "tibetanReviewsPerDay" to false)) {
+            findPreference<androidx.preference.EditTextPreference>(key)?.apply {
+                setOnBindEditTextListener { it.inputType = android.text.InputType.TYPE_CLASS_NUMBER }
+                launchCatchingTask {
+                    val value =
+                        withCol {
+                            val conf = decks.configDictForDeckId(com.ichi2.anki.tibetan.Library.LIBRARY_DECK_ID)
+                            (if (isNew) conf.new.jsonObject else conf.rev.jsonObject).getInt("perDay")
+                        }
+                    text = value.toString()
+                    summary = value.toString()
+                }
+                setOnPreferenceChangeListener { _, newValue ->
+                    val n = newValue.toString().toIntOrNull()?.coerceIn(0, 9999) ?: return@setOnPreferenceChangeListener false
+                    launchCatchingTask {
+                        withCol {
+                            val conf = decks.configDictForDeckId(com.ichi2.anki.tibetan.Library.LIBRARY_DECK_ID)
+                            (if (isNew) conf.new.jsonObject else conf.rev.jsonObject).put("perDay", n)
+                            decks.save(conf)
+                        }
+                        text = n.toString()
+                        summary = n.toString()
+                    }
+                    false
+                }
+            }
+        }
         // Paste PNG
         // Represents in the collection's pref "pastePNG" , i.e.
         // whether to convert clipboard uri to png format or not.

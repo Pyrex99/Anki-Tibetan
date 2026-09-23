@@ -270,4 +270,7 @@
 
     <!-- Onboarding -->
     <string name="internet_permission_requested_key">internetPermissionRequested</string>
+
+    <!-- Photo vocab import (Tibetan) -->
+    <string name="anthropic_api_key_pref">anthropicApiKey</string>
 </resources>

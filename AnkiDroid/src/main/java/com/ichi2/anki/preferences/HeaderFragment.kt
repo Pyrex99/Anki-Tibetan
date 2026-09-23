@@ -76,6 +76,12 @@ class HeaderFragment : SettingsFragment() {
         requirePreference<HeaderPreference>(R.string.pref_notifications_screen_key).isVisible = !Prefs.newReviewRemindersEnabled
         requirePreference<HeaderPreference>(R.string.pref_switch_profile_screen_key).isVisible = Prefs.switchProfileEnabled
 
+        // Tibetan fork: only General, Appearance and Backups
+        requirePreference<HeaderPreference>(R.string.pref_review_reminders_screen_key).isVisible = false
+        requirePreference<HeaderPreference>(R.string.pref_notifications_screen_key).isVisible = false
+        requirePreference<HeaderPreference>(R.string.pref_switch_profile_screen_key).isVisible = false
+        requirePreference<Preference>(R.string.pref_advanced_screen_key).isVisible = false
+
         configureSearchBar(
             requireActivity() as AppCompatActivity,
             requirePreference<SearchPreference>(R.string.search_preference_key).searchConfiguration,

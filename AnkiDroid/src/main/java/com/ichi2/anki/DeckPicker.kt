@@ -39,8 +39,6 @@ import androidx.activity.viewModels
 import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
-import androidx.appcompat.widget.Toolbar
-import androidx.appcompat.widget.TooltipCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.OnRequestPermissionsResultCallback
 import androidx.core.content.edit
@@ -55,7 +53,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat.Type.displayCutout
 import androidx.core.view.WindowInsetsCompat.Type.navigationBars
 import androidx.core.view.WindowInsetsCompat.Type.systemBars
-import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.draganddrop.DropHelper
@@ -170,7 +167,6 @@ import com.ichi2.anki.ui.windows.permissions.PermissionsActivity
 import com.ichi2.anki.utils.Destination
 import com.ichi2.anki.utils.ShortcutUtils
 import com.ichi2.anki.utils.ext.dismissAllDialogFragments
-import com.ichi2.anki.utils.ext.doOnScrolled
 import com.ichi2.anki.utils.ext.launchCollectionInLifecycleScope
 import com.ichi2.anki.utils.ext.positionIsVisible
 import com.ichi2.anki.utils.ext.setFragmentResultListener
@@ -273,6 +269,7 @@ open class DeckPicker :
 
     private lateinit var decksLayoutManager: LinearLayoutManager
     private lateinit var deckListAdapter: DeckAdapter
+    private lateinit var homeAdapter: com.ichi2.anki.tibetan.HomeAdapter
     private lateinit var pullToSyncWrapper: SwipeRefreshLayout
 
     @VisibleForTesting
@@ -533,7 +530,29 @@ open class DeckPicker :
                     Timber.d("Right Click on deck recorded!! %d, %f %f", deckId, x, y)
                 },
             )
-        deckPickerBinding.decks.adapter = deckListAdapter
+        // Tibetan fork: the home list (Roundup / Library / playlist decks) replaces Anki's deck tree.
+        // deckListAdapter is still fed so existing deck-count logic keeps working.
+        homeAdapter =
+            com.ichi2.anki.tibetan.HomeAdapter(
+                onRoundup = { onDeckClick(com.ichi2.anki.tibetan.Library.LIBRARY_DECK_ID, DeckSelectionType.SKIP_STUDY_OPTIONS) },
+                onLibrary = {
+                    startActivity(
+                        com.ichi2.anki.tibetan.WordListActivity
+                            .getIntent(this, null),
+                    )
+                },
+                onPlaylist = {
+                    startActivity(
+                        com.ichi2.anki.tibetan.WordListActivity
+                            .getIntent(this, it),
+                    )
+                },
+                onPlaylistLongPress = {
+                    com.ichi2.anki.tibetan.PlaylistActions
+                        .showMenu(this, it) { refreshHome() }
+                },
+            )
+        deckPickerBinding.decks.adapter = homeAdapter
 
         lifecycleScope.launch { applyDeckPickerBackground() }
 
@@ -657,19 +676,8 @@ open class DeckPicker :
     }
 
     private fun setupPullToSync() {
-        pullToSyncWrapper =
-            deckPickerBinding.pullToSyncWrapper.apply {
-                setDistanceToTriggerSync(SWIPE_TO_SYNC_TRIGGER_DISTANCE)
-                setOnRefreshListener {
-                    Timber.i("Pull to Sync: Syncing")
-                    pullToSyncWrapper.isRefreshing = false
-                    sync()
-                }
-            }
-        // Only allow pull-to-sync when the deck list is scrolled to the top.
-        deckPickerBinding.decks.doOnScrolled { _, _ ->
-            pullToSyncWrapper.isEnabled = decksLayoutManager.findFirstCompletelyVisibleItemPosition() == 0
-        }
+        // Tibetan fork: no AnkiWeb sync, so pulling down does nothing
+        pullToSyncWrapper = deckPickerBinding.pullToSyncWrapper.apply { isEnabled = false }
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -717,14 +725,10 @@ open class DeckPicker :
 
         fun onOptionsMenuUpdated(unused: OptionsMenuState) = invalidateOptionsMenu()
 
+        @Suppress("UNUSED_PARAMETER")
         fun onStudiedTodayChanged(studiedToday: String) {
-            deckPickerBinding.reviewSummaryTextView.text = studiedToday
-            // Adjust bottom margin of fabLinearLayout based on reviewSummaryTextView height
-            deckPickerBinding.reviewSummaryTextView.doOnLayout { view ->
-                val layoutParams = floatingActionButtonBinding.fabLinearLayout.layoutParams as MarginLayoutParams
-                layoutParams.setMargins(0, 0, 0, view.height / 2)
-                floatingActionButtonBinding.fabLinearLayout.layoutParams = layoutParams
-            }
+            // Tibetan fork: no "Studied N cards in X seconds today" banner on the home screen
+            deckPickerBinding.reviewSummaryTextView.isVisible = false
         }
 
         fun onCollectionStatusChanged(isInInitialState: Boolean) {
@@ -761,17 +765,10 @@ open class DeckPicker :
             binding.resizingDivider?.isVisible = isVisible
         }
 
+        @Suppress("UNUSED_PARAMETER")
         fun onCardsDueChanged(dueCount: Int?) {
-            if (dueCount == null) {
-                supportActionBar?.subtitle = null
-                return
-            }
-
-            supportActionBar?.apply {
-                subtitle = if (dueCount == 0) null else resources.getQuantityString(R.plurals.widget_cards_due, dueCount, dueCount)
-                val toolbar = findViewById<Toolbar>(R.id.toolbar)
-                TooltipCompat.setTooltipText(toolbar, toolbar.subtitle)
-            }
+            // Tibetan fork: the Library card already shows today's count
+            supportActionBar?.subtitle = null
         }
 
         fun onStudyOptionsVisibilityChanged(collectionHasNoCards: Boolean) {
@@ -784,6 +781,7 @@ open class DeckPicker :
                 data = deckList.data,
                 hasSubDecks = deckList.hasSubDecks,
             )
+            refreshHome()
         }
 
         fun onFocusedDeckChanged(deckId: DeckId?) {
@@ -1298,6 +1296,27 @@ open class DeckPicker :
                 showImportDialog()
                 return true
             }
+            R.id.action_add_from_photo -> {
+                Timber.i("DeckPicker:: Add cards from photo pressed")
+                startActivity(
+                    com.ichi2.anki.tibetan.AddWordsActivity
+                        .getIntent(this, null),
+                )
+                return true
+            }
+            R.id.action_ask_claude -> {
+                Timber.i("DeckPicker:: Ask Claude pressed")
+                startActivity(
+                    com.ichi2.anki.tibetan.AddWordsActivity
+                        .getIntent(this, null),
+                )
+                return true
+            }
+            R.id.action_study_direction -> {
+                Timber.i("DeckPicker:: Study direction pressed")
+                showStudyDirectionDialog()
+                return true
+            }
             R.id.action_check_database -> {
                 Timber.i("DeckPicker:: Check database button pressed")
                 showDatabaseErrorDialog(DatabaseErrorDialogType.DIALOG_CONFIRM_DATABASE_CHECK)
@@ -1414,7 +1433,14 @@ open class DeckPicker :
             sync()
         } else {
             selectNavigationItem(R.id.nav_decks)
-            updateDeckList()
+            // Tibetan fork: return any words left in a playlist study session to the Library
+            launchCatchingTask {
+                withCol {
+                    com.ichi2.anki.tibetan.Library
+                        .endStudySession(this)
+                }
+                updateDeckList()
+            }
             title = resources.getString(R.string.app_name)
         }
         // Update sync status (if we've come back from a screen)
@@ -2037,6 +2063,38 @@ open class DeckPicker :
         }
     }
 
+    /** Tibetan fork: reloads Roundup counts, Library size and playlist decks. */
+    private fun refreshHome() {
+        if (!::homeAdapter.isInitialized) return
+        launchCatchingTask {
+            val (counts, library, playlists) =
+                withCol {
+                    val node = sched.deckDueTree().find(com.ichi2.anki.tibetan.Library.LIBRARY_DECK_ID)
+                    Triple(
+                        com.ichi2.anki.tibetan.RoundupCounts(
+                            new = node?.newCount ?: 0,
+                            learning = node?.lrnCount ?: 0,
+                            review = node?.revCount ?: 0,
+                            direction =
+                                com.ichi2.anki.tibetan.StudyDirection
+                                    .get(this),
+                        ),
+                        com.ichi2.anki.tibetan.Library
+                            .librarySummary(this),
+                        com.ichi2.anki.tibetan.Library
+                            .playlists(this),
+                    )
+                }
+            homeAdapter.submit(counts, library, playlists)
+        }
+    }
+
+    /** Tibetan fork: choose Tibetan first / English first / Mix */
+    private fun showStudyDirectionDialog() {
+        com.ichi2.anki.tibetan.StudyDirectionPicker
+            .show(this) { updateDeckList() }
+    }
+
     /**
      * @see DeckPickerViewModel.updateDeckList
      */
@@ -2116,6 +2174,13 @@ open class DeckPicker :
      * @see CreateDeckDialog
      */
     fun showCreateDeckDialog() {
+        // Tibetan fork: "decks" are playlists of Library words
+        com.ichi2.anki.tibetan.PlaylistActions
+            .newDeck(this, null)
+    }
+
+    @Suppress("unused")
+    private fun showAnkiCreateDeckDialog() {
         val createDeckDialog =
             CreateDeckDialog(
                 context = this@DeckPicker,

@@ -11,12 +11,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import androidx.annotation.VisibleForTesting
-import com.google.android.material.color.MaterialColors
-import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.databinding.ActivityHomescreenBinding
 import com.ichi2.anki.databinding.IncludeFloatingAddButtonBinding
 import com.ichi2.anki.ui.DoubleTapListener
-import com.ichi2.anki.ui.internationalization.sentenceCase
 import timber.log.Timber
 
 class DeckPickerFloatingActionMenu(
@@ -32,8 +29,14 @@ class DeckPickerFloatingActionMenu(
     private val studyOptionsFrame: View? = homescreenBinding.studyoptionsFrame
 
     // Colors values obtained from attributes
-    private val fabNormalColor = MaterialColors.getColor(binding.fabMain, R.attr.fab_normal)
-    private val fabPressedColor = MaterialColors.getColor(binding.fabMain, R.attr.fab_pressed)
+    // Tibetan fork: the "+" uses the app palette (indigo / black & white)
+    private val fabNormalColor =
+        com.ichi2.anki.tibetan.TibetanTheme
+            .palette(context)
+            .primary
+    private val fabPressedColor =
+        androidx.core.graphics.ColorUtils
+            .blendARGB(fabNormalColor, android.graphics.Color.BLACK, 0.15f)
 
     // Add Note Drawable Icon
     private val addNoteIcon: Int = R.drawable.ic_add_note
@@ -281,6 +284,20 @@ class DeckPickerFloatingActionMenu(
         }
 
     init {
+        binding.fabMain.backgroundTintList = ColorStateList.valueOf(fabNormalColor)
+        binding.fabMain.iconTint =
+            ColorStateList.valueOf(
+                com.ichi2.anki.tibetan.TibetanTheme
+                    .palette(context)
+                    .onPrimary,
+            )
+        binding.fabMain.setTextColor(
+            com.ichi2.anki.tibetan.TibetanTheme
+                .palette(context)
+                .onPrimary,
+        )
+        binding.fabMain.text = "Add cards"
+        binding.fabMain.contentDescription = "Add cards"
         binding.fabMain.isExtended = false
         binding.fabMain.setOnTouchListener(
             object : DoubleTapListener(context) {
@@ -334,7 +351,7 @@ class DeckPickerFloatingActionMenu(
                 }
             }
         binding.addDeckButton.apply {
-            text = with(context) { TR.sentenceCase.createDeck }
+            text = "Add deck"
             contentDescription = text
         }
         binding.addDeckButton.setOnClickListener(addDeckListener)
@@ -416,7 +433,9 @@ class DeckPickerFloatingActionMenu(
      * @see DeckPicker.addNote
      */
     private fun addNote() {
-        deckPicker.addNote()
+        // Tibetan fork: "Add cards" chooser (adds to the Library)
+        com.ichi2.anki.tibetan.AddCards
+            .show(deckPicker, null)
     }
 
     fun interface FloatingActionBarToggleListener {
