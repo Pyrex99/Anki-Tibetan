@@ -19,7 +19,7 @@ import com.ichi2.anki.libanki.Collection
 import timber.log.Timber
 
 object CardStyle {
-    private const val VERSION = 1
+    private const val VERSION = 2
     private const val CONFIG_VERSION = "tibetanCardStyleVersion"
     private const val NOTETYPE_NAME = "Basic"
 
@@ -39,7 +39,7 @@ object CardStyle {
           font-family: "Tibetan Serif";
           src: url("$tibetanFont");
           unicode-range: U+0F00-0FFF;
-          size-adjust: 125%;
+          size-adjust: 105%;
         }
         @font-face {
           font-family: "Inter";
@@ -54,12 +54,12 @@ object CardStyle {
           background-color: white;
         }
         .word {
-          font-size: 1.7em;
+          font-size: 1.45em;
           font-weight: 500;
           margin: 22vh 1em 0;
         }
         .answer {
-          font-size: 1.3em;
+          font-size: 1.2em;
           margin: 0 1em;
           opacity: 0.9;
         }
