@@ -72,8 +72,8 @@ enum class StudyDirection(
             if (nt.templates.length() > 1) return
             Timber.i("Adding English-first template to Basic")
             val template = col.notetypes.newTemplate(REVERSE_TEMPLATE_NAME)
-            template.qfmt = "{{Back}}"
-            template.afmt = "{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}"
+            template.qfmt = CardStyle.BACK_QFMT
+            template.afmt = CardStyle.BACK_AFMT
             col.notetypes.addTemplate(nt, template)
 
             if (col.config.get<Boolean>(CONFIG_KEY_SETUP_DONE) != true) {

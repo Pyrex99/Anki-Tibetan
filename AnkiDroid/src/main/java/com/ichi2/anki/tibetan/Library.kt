@@ -53,9 +53,12 @@ data class Word(
 
 /** A playlist row for the home screen. */
 data class PlaylistInfo(
-    /** full name, e.g. "Verbs::Irregular" */
+    /** full name, e.g. "Verbs::Irregular"; "" for the Library */
     val name: String,
     val wordCount: Int,
+    /** average % correct per direction; null = nothing reviewed yet */
+    val tibetanScore: Int? = null,
+    val englishScore: Int? = null,
 ) {
     val depth get() = name.count { it == ':' } / 2
     val shortName get() = name.substringAfterLast("::")
@@ -221,8 +224,31 @@ object Library {
 
     fun playlists(col: Collection): List<PlaylistInfo> {
         val words = allWords(col)
-        return playlistNames(col).map { name -> PlaylistInfo(name, words.count { it.isIn(name) }) }
+        return playlistNames(col).map { name -> summarize(name, words.filter { it.isIn(name) }) }
     }
+
+    /** The Library as a whole, for the home screen. */
+    fun librarySummary(col: Collection): PlaylistInfo = summarize("", allWords(col))
+
+    private fun summarize(
+        name: String,
+        members: List<Word>,
+    ) = PlaylistInfo(
+        name = name,
+        wordCount = members.size,
+        tibetanScore =
+            members
+                .mapNotNull { it.tibetanScore }
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?.toInt(),
+        englishScore =
+            members
+                .mapNotNull { it.englishScore }
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?.toInt(),
+    )
 
     private fun addPlaylistName(
         col: Collection,

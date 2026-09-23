@@ -47,11 +47,15 @@ object PlaylistActions {
             .show()
     }
 
-    /** Asks for a name, then opens the word picker. [parent] = null for a top-level deck. */
+    /**
+     * Asks for a name, then opens the word picker. [parent] = null for a top-level deck.
+     * Decks go at most two levels deep: a "subdeck of a subdeck" is created under the main deck.
+     */
     fun newDeck(
         activity: FragmentActivity,
-        parent: String?,
+        requestedParent: String?,
     ) {
+        val parent = requestedParent?.substringBefore("::")
         val title = if (parent == null) "New deck" else "New subdeck of ${Library.displayName(parent)}"
         promptName(activity, title, "") { name ->
             val full = if (parent == null) name else "$parent::$name"

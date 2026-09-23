@@ -8,7 +8,16 @@
 package com.ichi2.anki.tibetan
 
 import android.content.Context
+import android.graphics.Typeface
+import android.text.TextUtils
+import android.util.TypedValue
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.content.edit
+import androidx.core.graphics.ColorUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.ichi2.anki.R
 import com.ichi2.anki.common.preferences.sharedPrefs
@@ -47,6 +56,66 @@ enum class WordColumn(
             ENGLISH_SCORE -> word.englishScore ?: -1
             ADDED -> word.added
             TAGS -> word.tags.joinToString(" ").lowercase()
+        }
+
+    /**
+     * A table cell for [word] in this column: Tibetan in the Tibetan font, scores as
+     * coloured pills, everything else in the English font.
+     */
+    fun cell(
+        context: Context,
+        word: Word,
+        palette: Palette,
+    ): View {
+        val params = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, weight)
+        if (this == TIBETAN_SCORE || this == ENGLISH_SCORE) {
+            val chip =
+                TextView(context).apply {
+                    typeface = TibetanTheme.englishTypeface(context)
+                    textSize = 12f
+                }
+            TibetanTheme.styleScoreChip(chip, if (this == TIBETAN_SCORE) word.tibetanScore else word.englishScore, palette)
+            return FrameLayout(context).apply {
+                layoutParams = params
+                addView(chip, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            }
+        }
+        return TextView(context).apply {
+            layoutParams = params
+            text = text(word)
+            setPadding(4, 0, 4, 0)
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
+            setTextColor(palette.onSurface)
+            if (this@WordColumn == TIBETAN) {
+                typeface = TibetanTheme.tibetanTypeface(context)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+            } else {
+                typeface = TibetanTheme.englishTypeface(context)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                if (this@WordColumn == ADDED || this@WordColumn == TAGS) alpha = 0.7f
+            }
+        }
+    }
+
+    /** Header cell ("Tibetan ↑"); tap to sort. */
+    fun headerCell(
+        context: Context,
+        label: String,
+        palette: Palette,
+        onClick: () -> Unit,
+    ): TextView =
+        TextView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, weight)
+            text = label
+            setPadding(4, 0, 4, 0)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            typeface = Typeface.create(TibetanTheme.englishTypeface(context), Typeface.BOLD)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            letterSpacing = 0.04f
+            setTextColor(ColorUtils.setAlphaComponent(palette.onSurface, 0xAA))
+            setOnClickListener { onClick() }
         }
 
     companion object {

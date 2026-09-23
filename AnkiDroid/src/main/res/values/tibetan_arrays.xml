@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string-array name="tibetan_colours_labels">
+        <item>Flag colours</item>
+        <item>Black &amp; white</item>
+    </string-array>
+    <string-array name="tibetan_colours_values" translatable="false">
+        <item>flag</item>
+        <item>mono</item>
+    </string-array>
+</resources>

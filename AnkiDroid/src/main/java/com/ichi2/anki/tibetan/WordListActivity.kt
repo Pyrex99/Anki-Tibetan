@@ -10,9 +10,7 @@ package com.ichi2.anki.tibetan
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Typeface
 import android.os.Bundle
-import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Menu
 import android.view.MenuItem
@@ -53,6 +51,7 @@ class WordListActivity : AnkiActivity() {
     private lateinit var summary: TextView
     private lateinit var studyButton: MaterialButton
     private lateinit var directionButton: MaterialButton
+    private val palette by lazy { TibetanTheme.palette(this) }
     private val adapter = WordAdapter()
 
     private val studyLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { reload() }
@@ -85,6 +84,19 @@ class WordListActivity : AnkiActivity() {
             adapter = this@WordListActivity.adapter
         }
         findViewById<View>(R.id.add_fab).setOnClickListener { AddCards.show(this, playlist) }
+        TibetanTheme.styleButton(studyButton, palette, filled = true)
+        TibetanTheme.styleButton(directionButton, palette, filled = false)
+        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.add_fab).apply {
+            backgroundTintList =
+                android.content.res.ColorStateList
+                    .valueOf(palette.primary)
+            supportBackgroundTintList =
+                android.content.res.ColorStateList
+                    .valueOf(palette.primary)
+            imageTintList =
+                android.content.res.ColorStateList
+                    .valueOf(palette.onPrimary)
+        }
         columns = WordColumn.enabled(this)
         buildHeader()
     }
@@ -122,8 +134,9 @@ class WordListActivity : AnkiActivity() {
             summary.text =
                 buildString {
                     append("${words.size} words")
-                    if (subdecks > 0) append(" · $subdecks subdecks")
-                    if (playlist != null) append(" · a session is the ${Library.SESSION_SIZE} weakest / least recently seen")
+                    if (subdecks == 1) append(" · 1 subdeck")
+                    if (subdecks > 1) append(" · $subdecks subdecks")
+                    if (playlist != null) append(" · studies your ${Library.SESSION_SIZE} weakest")
                 }
             applyFilterAndSort()
         }
@@ -168,30 +181,14 @@ class WordListActivity : AnkiActivity() {
                     else -> " ↑"
                 }
             header.addView(
-                cell(column, column.label + arrow).apply {
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                    setOnClickListener {
-                        if (sortColumn == column) sortDescending = !sortDescending else sortColumn = column
-                        buildHeader()
-                        applyFilterAndSort()
-                    }
+                column.headerCell(this, column.label + arrow, palette) {
+                    if (sortColumn == column) sortDescending = !sortDescending else sortColumn = column
+                    buildHeader()
+                    applyFilterAndSort()
                 },
             )
         }
     }
-
-    private fun cell(
-        column: WordColumn,
-        text: String,
-    ): TextView =
-        TextView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, column.weight)
-            this.text = text
-            setPadding(4, 0, 4, 0)
-            maxLines = 2
-            ellipsize = TextUtils.TruncateAt.END
-        }
 
     private fun study() {
         launchCatchingTask {
@@ -299,6 +296,7 @@ class WordListActivity : AnkiActivity() {
                 LinearLayout(parent.context).apply {
                     layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                     orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
                     setPadding(dp(12), dp(10), dp(12), dp(10))
                     val outValue = TypedValue()
                     context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
@@ -316,11 +314,7 @@ class WordListActivity : AnkiActivity() {
             val word = visible[position]
             holder.row.removeAllViews()
             for (column in columns) {
-                holder.row.addView(
-                    cell(column, column.text(word)).apply {
-                        if (column == WordColumn.TIBETAN) setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                    },
-                )
+                holder.row.addView(column.cell(holder.itemView.context, word, palette))
             }
             holder.row.setOnClickListener { editWord(word) }
             holder.row.setOnLongClickListener {

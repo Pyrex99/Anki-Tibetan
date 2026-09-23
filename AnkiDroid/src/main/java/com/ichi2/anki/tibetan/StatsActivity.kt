@@ -27,7 +27,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.color.MaterialColors
 import com.ichi2.anki.AnkiActivity
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.R
@@ -40,8 +39,9 @@ import java.util.Locale
 
 class StatsActivity : AnkiActivity() {
     private lateinit var content: LinearLayout
-    private val primary by lazy { MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary, 0) }
-    private val onSurface by lazy { MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface, 0) }
+    private val palette by lazy { TibetanTheme.palette(this) }
+    private val primary get() = palette.primary
+    private val onSurface get() = palette.onSurface
 
     private val drillLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { reload() }
 

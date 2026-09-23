@@ -399,6 +399,8 @@ class DeckPickerViewModel :
                                 .migrateIfNeeded(this)
                             com.ichi2.anki.tibetan.StudyDirection
                                 .sync(this)
+                            com.ichi2.anki.tibetan.CardStyle
+                                .ensure(this, com.ichi2.anki.AnkiDroidApp.instance)
                         } catch (e: Exception) {
                             Timber.w(e, "Could not apply study direction")
                         }

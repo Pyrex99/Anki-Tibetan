@@ -10,10 +10,7 @@ package com.ichi2.anki.tibetan
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Typeface
 import android.os.Bundle
-import android.text.TextUtils
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -21,7 +18,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -58,6 +54,7 @@ class WordPickerActivity : AnkiActivity() {
     /** newest first by default, so words you just added are easy to find */
     private var sortColumn: WordColumn = WordColumn.ADDED
     private var sortDescending = true
+    private val palette by lazy { TibetanTheme.palette(this) }
     private val adapter = PickAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +81,7 @@ class WordPickerActivity : AnkiActivity() {
         }
         saveButton = findViewById(R.id.save_button)
         saveButton.setOnClickListener { save() }
+        TibetanTheme.styleButton(saveButton, palette, filled = true)
         findViewById<EditText>(R.id.search).doAfterTextChanged {
             query = it?.toString().orEmpty()
             applyFilter()
@@ -158,35 +156,19 @@ class WordPickerActivity : AnkiActivity() {
                     else -> " ↑"
                 }
             header.addView(
-                cell(column, column.label + arrow).apply {
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                    setOnClickListener {
-                        if (sortColumn == column) {
-                            sortDescending = !sortDescending
-                        } else {
-                            sortColumn = column
-                            sortDescending = column == WordColumn.ADDED
-                        }
-                        buildHeader()
-                        applyFilter()
+                column.headerCell(this, column.label + arrow, palette) {
+                    if (sortColumn == column) {
+                        sortDescending = !sortDescending
+                    } else {
+                        sortColumn = column
+                        sortDescending = column == WordColumn.ADDED
                     }
+                    buildHeader()
+                    applyFilter()
                 },
             )
         }
     }
-
-    private fun cell(
-        column: WordColumn,
-        text: String,
-    ): TextView =
-        TextView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, column.weight)
-            this.text = text
-            setPadding(4, 0, 4, 0)
-            maxLines = 2
-            ellipsize = TextUtils.TruncateAt.END
-        }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, MENU_COLUMNS, 0, "Columns")
@@ -244,11 +226,7 @@ class WordPickerActivity : AnkiActivity() {
             val word = visible[position]
             holder.cells.removeAllViews()
             for (column in columns) {
-                holder.cells.addView(
-                    cell(column, column.text(word)).apply {
-                        if (column == WordColumn.TIBETAN) setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                    },
-                )
+                holder.cells.addView(column.cell(holder.itemView.context, word, palette))
             }
             holder.checkbox.isChecked = word.noteId in selected
             holder.itemView.setOnClickListener {

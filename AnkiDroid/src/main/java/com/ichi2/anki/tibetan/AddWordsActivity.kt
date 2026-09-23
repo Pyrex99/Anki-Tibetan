@@ -91,6 +91,11 @@ class AddWordsActivity : AnkiActivity() {
         progressText = findViewById(R.id.progress_text)
         addButton = findViewById(R.id.add_button)
         addButton.setOnClickListener { addSelectedCards() }
+        val palette = TibetanTheme.palette(this)
+        TibetanTheme.styleButton(addButton, palette, filled = true)
+        for (id in listOf(R.id.photo_button, R.id.fill_button, R.id.add_row_button)) {
+            TibetanTheme.styleButton(findViewById(id), palette, filled = false)
+        }
         promptInput = findViewById(R.id.prompt)
         promptInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) {
