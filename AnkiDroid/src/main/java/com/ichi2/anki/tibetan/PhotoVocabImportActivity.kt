@@ -1,11 +1,12 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Tibetan vocabulary card import, in two modes:
+ * Tibetan vocabulary card entry, in three modes:
  *  - [Mode.PHOTO]: capture/pick a photo of a textbook vocabulary page
  *  - [Mode.ASK]: ask Claude for words ("give me ten new verbs to learn")
- * Pairs come from [ClaudeVocab]; the user reviews/edits them, and they are
- * added as Basic notes to the Default deck.
+ *  - [Mode.MANUAL]: type words in; "Fill in with Claude" completes missing sides
+ * The user reviews/edits the rows, and they are added as Basic notes to the
+ * Library (and to a playlist deck, if opened from one).
  */
 
 package com.ichi2.anki.tibetan
@@ -37,7 +38,6 @@ import com.ichi2.anki.R
 import com.ichi2.anki.common.preferences.sharedPrefs
 import com.ichi2.anki.common.utils.android.showThemedToast
 import com.ichi2.anki.launchCatchingTask
-import com.ichi2.anki.libanki.Consts
 import com.ichi2.anki.libanki.Note
 import com.ichi2.anki.withProgress
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +48,9 @@ import java.io.File
 
 class PhotoVocabImportActivity : AnkiActivity() {
     private lateinit var mode: Mode
+
+    /** playlist deck to also add the words to; null = Library only */
+    private var playlist: String? = null
     private var apiKey: String = ""
     private var cameraImageUri: Uri? = null
 
@@ -80,11 +83,18 @@ class PhotoVocabImportActivity : AnkiActivity() {
         setContentView(R.layout.activity_photo_vocab_import)
 
         mode = Mode.entries[intent.getIntExtra(EXTRA_MODE, Mode.PHOTO.ordinal)]
+        playlist = intent.getStringExtra(EXTRA_PLAYLIST)
         apiKey = sharedPrefs().getString(getString(R.string.anthropic_api_key_pref), "").orEmpty().trim()
 
         enableToolbar().apply {
             setDisplayHomeAsUpEnabled(true)
-            setTitle(if (mode == Mode.ASK) R.string.ask_claude_for_words else R.string.photo_import_title)
+            title =
+                when (mode) {
+                    Mode.ASK -> getString(R.string.ask_claude_for_words)
+                    Mode.MANUAL -> "Add words"
+                    Mode.PHOTO -> getString(R.string.photo_import_title)
+                }
+            subtitle = "Adding to " + (playlist?.let { "Library + ${Library.displayName(it)}" } ?: Library.LIBRARY_NAME)
         }
         findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
 
@@ -102,6 +112,15 @@ class PhotoVocabImportActivity : AnkiActivity() {
         }
         updateAddButton()
 
+        if (mode == Mode.MANUAL) {
+            findViewById<View>(R.id.manual_bar).visibility = View.VISIBLE
+            findViewById<MaterialButton>(R.id.add_row_button).setOnClickListener { adapter.addBlankRow() }
+            findViewById<MaterialButton>(R.id.fill_button).setOnClickListener { fillWithClaude() }
+            findViewById<android.widget.TextView>(R.id.progress_text).text = "Asking Claude…"
+            if (savedInstanceState == null) repeat(5) { adapter.addBlankRow() }
+            return
+        }
+
         if (apiKey.isBlank()) {
             showThemedToast(this, R.string.photo_import_no_api_key, false)
             finish()
@@ -112,6 +131,41 @@ class PhotoVocabImportActivity : AnkiActivity() {
             when (mode) {
                 Mode.PHOTO -> showSourceChooser()
                 Mode.ASK -> showAskDialog()
+                Mode.MANUAL -> {}
+            }
+        }
+    }
+
+    /** Completes rows where only one side was typed. */
+    private fun fillWithClaude() {
+        val toFill = adapter.rows.filter { it.tibetan.isBlank() != it.english.isBlank() }
+        if (toFill.isEmpty()) {
+            showThemedToast(this, "Type an English or Tibetan word in a row, and Claude fills in the other side", false)
+            return
+        }
+        if (apiKey.isBlank()) {
+            showThemedToast(this, R.string.photo_import_no_api_key, false)
+            return
+        }
+        launchCatchingTask {
+            progressContainer.visibility = View.VISIBLE
+            val result =
+                try {
+                    ClaudeVocab.fill(toFill.map { VocabPair(it.tibetan.trim(), it.english.trim()) }, apiKey)
+                } finally {
+                    progressContainer.visibility = View.GONE
+                }
+            when (result) {
+                is ExtractionResult.Success -> {
+                    toFill.zip(result.pairs).forEach { (row, pair) ->
+                        row.tibetan = pair.tibetan
+                        row.english = pair.english
+                        row.checked = true
+                    }
+                    adapter.notifyDataSetChanged()
+                    updateAddButton()
+                }
+                is ExtractionResult.Failure -> showThemedToast(this@PhotoVocabImportActivity, result.message, false)
             }
         }
     }
@@ -269,7 +323,8 @@ class PhotoVocabImportActivity : AnkiActivity() {
                             val note = Note.fromNotetypeId(this, notetype.id)
                             note.setField(0, row.tibetan.trim())
                             note.setField(1, row.english.trim())
-                            addNote(note, Consts.DEFAULT_DECK_ID)
+                            addNote(note, Library.LIBRARY_DECK_ID)
+                            playlist?.let { Library.addWords(this, it, listOf(note.id)) }
                         }
                         selected.size
                     }
@@ -308,6 +363,11 @@ class PhotoVocabImportActivity : AnkiActivity() {
             rows.clear()
             rows.addAll(newRows)
             notifyDataSetChanged()
+        }
+
+        fun addBlankRow() {
+            rows.add(Row("", ""))
+            notifyItemInserted(rows.size - 1)
         }
 
         fun selectedCount(): Int = rows.count { it.checked && it.tibetan.isNotBlank() && it.english.isNotBlank() }
@@ -391,18 +451,22 @@ class PhotoVocabImportActivity : AnkiActivity() {
         }
     }
 
-    enum class Mode { PHOTO, ASK }
+    enum class Mode { PHOTO, ASK, MANUAL }
 
     companion object {
         private const val EXTRA_MODE = "mode"
+        private const val EXTRA_PLAYLIST = "playlist"
         private const val MAX_EDGE = 1568
 
+        /** @param playlist deck to also add the words to; null = Library only */
         fun getIntent(
             context: Context,
             mode: Mode,
+            playlist: String? = null,
         ): Intent =
             Intent(context, PhotoVocabImportActivity::class.java).apply {
                 putExtra(EXTRA_MODE, mode.ordinal)
+                putExtra(EXTRA_PLAYLIST, playlist)
             }
     }
 }

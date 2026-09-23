@@ -12,6 +12,13 @@
         android:layout_height="?attr/actionBarSize"
         app:navigationIcon="?attr/homeAsUpIndicator" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/source_button"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp" />
+
     <EditText
         android:id="@+id/search"
         android:layout_width="match_parent"

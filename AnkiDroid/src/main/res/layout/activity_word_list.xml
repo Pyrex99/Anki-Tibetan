@@ -65,11 +65,27 @@
         android:layout_height="1dp"
         android:background="?android:attr/listDivider" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/words"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingBottom="16dp" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/words"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="88dp" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/add_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:backgroundTint="?attr/fab_normal"
+            android:contentDescription="Add cards"
+            app:srcCompat="@drawable/ic_add"
+            app:tint="?attr/colorOnPrimary" />
+    </FrameLayout>
 </LinearLayout>

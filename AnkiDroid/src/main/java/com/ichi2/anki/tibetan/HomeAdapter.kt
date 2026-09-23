@@ -3,11 +3,9 @@
  *
  * Tibetan fork: the home screen list, replacing Anki's deck tree.
  *
- *   Roundup        (daily study of the whole Library)
- *   Library        (all words)
- *   Decks      [+ New deck]
- *     > Verbs
- *         Irregular
+ *   Library        (all words; its screen has the daily Roundup)
+ *   > Verbs
+ *       Irregular
  */
 
 package com.ichi2.anki.tibetan
@@ -32,22 +30,14 @@ data class RoundupCounts(
 }
 
 class HomeAdapter(
-    private val onRoundup: () -> Unit,
     private val onLibrary: () -> Unit,
-    private val onNewDeck: () -> Unit,
     private val onPlaylist: (String) -> Unit,
     private val onPlaylistLongPress: (String) -> Unit,
 ) : RecyclerView.Adapter<HomeAdapter.Holder>() {
     private sealed interface Item {
-        data class Roundup(
-            val counts: RoundupCounts,
-        ) : Item
-
         data class LibraryRow(
             val wordCount: Int,
         ) : Item
-
-        data object DecksHeader : Item
 
         data class Playlist(
             val info: PlaylistInfo,
@@ -74,7 +64,7 @@ class HomeAdapter(
     }
 
     private fun rebuild() {
-        val list = mutableListOf<Item>(Item.Roundup(counts), Item.LibraryRow(libraryWordCount), Item.DecksHeader)
+        val list = mutableListOf<Item>(Item.LibraryRow(libraryWordCount))
         for (info in playlists) {
             // hidden if any ancestor is collapsed
             var parent = Library.parentOf(info.name)
@@ -121,33 +111,12 @@ class HomeAdapter(
         holder.subtitle.isVisible = true
 
         when (val item = items[position]) {
-            is Item.Roundup -> {
-                holder.title.text = "Roundup"
-                holder.subtitle.text =
-                    if (item.counts.total == 0) {
-                        "All done for today · ${item.counts.direction.label}"
-                    } else {
-                        "${item.counts.review} to review · ${item.counts.learning} learning · ${item.counts.new} new" +
-                            "\n${item.counts.direction.label}"
-                    }
-                holder.action.isVisible = true
-                holder.action.text = if (item.counts.total == 0) "" else "Study"
-                holder.action.setOnClickListener { onRoundup() }
-                holder.itemView.setOnClickListener { onRoundup() }
-            }
             is Item.LibraryRow -> {
                 holder.title.text = Library.LIBRARY_NAME
-                holder.subtitle.text = "${item.wordCount} words"
+                holder.subtitle.text =
+                    "${item.wordCount} words · " +
+                    if (counts.total == 0) "all done for today" else "${counts.total} to study today"
                 holder.itemView.setOnClickListener { onLibrary() }
-            }
-            Item.DecksHeader -> {
-                holder.title.text = "Decks"
-                holder.subtitle.isVisible = playlists.isEmpty()
-                holder.subtitle.text = "Make a deck to group words from your Library"
-                holder.action.isVisible = true
-                holder.action.text = "+ New deck"
-                holder.action.setOnClickListener { onNewDeck() }
-                holder.itemView.setOnClickListener { onNewDeck() }
             }
             is Item.Playlist -> {
                 holder.itemView.setPaddingRelative((item.info.depth * 24 * density).toInt(), 0, holder.itemView.paddingEnd, 0)

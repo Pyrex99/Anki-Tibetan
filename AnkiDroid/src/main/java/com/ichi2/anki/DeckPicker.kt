@@ -538,14 +538,12 @@ open class DeckPicker :
         // deckListAdapter is still fed so existing deck-count logic keeps working.
         homeAdapter =
             com.ichi2.anki.tibetan.HomeAdapter(
-                onRoundup = { onDeckClick(com.ichi2.anki.tibetan.Library.LIBRARY_DECK_ID, DeckSelectionType.SKIP_STUDY_OPTIONS) },
                 onLibrary = {
                     startActivity(
                         com.ichi2.anki.tibetan.WordListActivity
                             .getIntent(this, null),
                     )
                 },
-                onNewDeck = { showCreateDeckDialog() },
                 onPlaylist = {
                     startActivity(
                         com.ichi2.anki.tibetan.WordListActivity

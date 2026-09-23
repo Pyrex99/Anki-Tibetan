@@ -108,12 +108,12 @@ object PlaylistActions {
         playlist: String,
         onChanged: () -> Unit,
     ) {
-        val options = listOf("Choose words", "Add subdeck", "Rename", "Delete")
+        val options = listOf("Add cards", "Add subdeck", "Rename", "Delete")
         MaterialAlertDialogBuilder(activity)
             .setTitle(Library.displayName(playlist))
             .setItems(options.toTypedArray()) { _, which ->
                 when (which) {
-                    0 -> activity.startActivity(WordPickerActivity.getIntent(activity, playlist, isNew = false))
+                    0 -> AddCards.show(activity, playlist)
                     1 -> newDeck(activity, playlist)
                     2 -> rename(activity, playlist) { onChanged() }
                     3 -> delete(activity, playlist, onChanged)

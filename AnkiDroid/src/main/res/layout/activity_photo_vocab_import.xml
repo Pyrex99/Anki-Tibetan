@@ -48,6 +48,32 @@
         </LinearLayout>
     </FrameLayout>
 
+    <LinearLayout
+        android:id="@+id/manual_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/add_row_button"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:text="+ Another word" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/fill_button"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Fill in with Claude" />
+    </LinearLayout>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_button"
         android:layout_width="match_parent"

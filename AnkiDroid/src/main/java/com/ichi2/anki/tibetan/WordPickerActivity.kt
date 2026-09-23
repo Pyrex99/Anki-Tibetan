@@ -1,8 +1,9 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Tibetan fork: choose which words are in a playlist deck. Candidates are the
- * Library (top-level deck) or the parent deck's words (subdeck).
+ * Tibetan fork: choose which words are in a playlist deck. Words can come from the
+ * Library or any other deck ("From: …"); a new subdeck starts out showing its
+ * parent's words. Adding a word to a subdeck also puts it in the parent.
  */
 
 package com.ichi2.anki.tibetan
@@ -20,6 +21,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.ichi2.anki.AnkiActivity
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.R
@@ -31,12 +33,19 @@ class WordPickerActivity : AnkiActivity() {
     private lateinit var playlist: String
     private var isNew = false
 
+    private var allWords: List<Word> = emptyList()
+    private var otherDecks: List<String> = emptyList()
+
+    /** null = whole Library */
+    private var source: String? = null
     private var candidates: List<Word> = emptyList()
     private var visible: List<Word> = emptyList()
     private val selected = mutableSetOf<NoteId>()
 
     private lateinit var includeAll: MaterialCheckBox
     private lateinit var saveButton: MaterialButton
+    private lateinit var sourceButton: MaterialButton
+    private var query = ""
     private val adapter = PickAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,38 +58,62 @@ class WordPickerActivity : AnkiActivity() {
         enableToolbar().apply {
             setDisplayHomeAsUpEnabled(true)
             title = playlist.substringAfterLast("::")
-            subtitle = "From " + (Library.parentOf(playlist)?.let { Library.displayName(it) } ?: Library.LIBRARY_NAME)
         }
         findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
 
         includeAll = findViewById(R.id.include_all)
         includeAll.setOnClickListener {
-            if (includeAll.isChecked) selected.addAll(candidates.map { it.noteId }) else selected.clear()
+            if (includeAll.isChecked) {
+                selected.addAll(candidates.map { it.noteId })
+            } else {
+                selected.removeAll(candidates.map { it.noteId }.toSet())
+            }
             refresh()
         }
         saveButton = findViewById(R.id.save_button)
         saveButton.setOnClickListener { save() }
-        findViewById<EditText>(R.id.search).doAfterTextChanged { applyFilter(it?.toString().orEmpty()) }
+        findViewById<EditText>(R.id.search).doAfterTextChanged {
+            query = it?.toString().orEmpty()
+            applyFilter()
+        }
+        sourceButton = findViewById(R.id.source_button)
+        sourceButton.setOnClickListener { chooseSource() }
         findViewById<RecyclerView>(R.id.words).apply {
             layoutManager = LinearLayoutManager(this@WordPickerActivity)
             adapter = this@WordPickerActivity.adapter
         }
 
         launchCatchingTask {
-            val (source, current) =
-                withCol {
-                    val all = Library.allWords(this)
-                    val parent = Library.parentOf(playlist)
-                    val source = if (parent == null) all else all.filter { it.isIn(parent) }
-                    source to all.filter { it.isIn(playlist) }.map { it.noteId }
-                }
-            candidates = source.sortedBy { it.tibetan }
-            if (savedInstanceState == null) selected.addAll(current)
-            applyFilter("")
+            val (all, decks) = withCol { Library.allWords(this) to Library.playlistNames(this) }
+            allWords = all.sortedBy { it.tibetan }
+            otherDecks = decks.filterNot { it.equals(playlist, true) }
+            if (savedInstanceState == null) selected.addAll(all.filter { it.isIn(playlist) }.map { it.noteId })
+            setSource(if (isNew) Library.parentOf(playlist) else null)
         }
     }
 
-    private fun applyFilter(query: String) {
+    private fun setSource(deck: String?) {
+        source = deck
+        sourceButton.text = "From: " + (deck?.let { Library.displayName(it) } ?: Library.LIBRARY_NAME) + " ▾"
+        // keep already-chosen words visible so they can be unticked
+        candidates = allWords.filter { deck == null || it.isIn(deck) || it.noteId in selected }
+        applyFilter()
+    }
+
+    private fun chooseSource() {
+        val choices = listOf<String?>(null) + otherDecks
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Show words from")
+            .setSingleChoiceItems(
+                choices.map { it?.let { d -> Library.displayName(d) } ?: Library.LIBRARY_NAME }.toTypedArray(),
+                choices.indexOf(source),
+            ) { dialog, which ->
+                dialog.dismiss()
+                setSource(choices[which])
+            }.show()
+    }
+
+    private fun applyFilter() {
         val q = query.trim().lowercase()
         visible =
             if (q.isEmpty()) {
@@ -92,7 +125,7 @@ class WordPickerActivity : AnkiActivity() {
     }
 
     private fun refresh() {
-        includeAll.isChecked = candidates.isNotEmpty() && selected.size == candidates.size
+        includeAll.isChecked = candidates.isNotEmpty() && candidates.all { it.noteId in selected }
         includeAll.text = "Include all (${candidates.size})"
         saveButton.text = "Save · ${selected.size} words"
         adapter.notifyDataSetChanged()

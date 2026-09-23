@@ -147,6 +147,36 @@ object ClaudeVocab {
         }
     }
 
+    /**
+     * Completes cards where the user typed only one side (e.g. English words they want to learn).
+     * Returns the same number of cards, in the same order.
+     */
+    suspend fun fill(
+        rows: List<VocabPair>,
+        apiKey: String,
+    ): ExtractionResult {
+        val prompt =
+            buildString {
+                append("Complete these flashcards. Each line is \"Tibetan | English\"; one side may be empty. ")
+                append("Fill in the empty side. Keep the side that was given as written, except that a verb's ")
+                append("Tibetan side must have its three stems. If the English is ambiguous, pick the most common meaning ")
+                append("and make it clear on the English side (e.g. \"to see\" not \"see\"). ")
+                append("Return exactly ${rows.size} cards in the same order.\n\n")
+                rows.forEach { append("${it.tibetan} | ${it.english}\n") }
+            }
+        val result =
+            send(apiKey) {
+                addJsonObject {
+                    put("type", "text")
+                    put("text", prompt)
+                }
+            }
+        if (result is ExtractionResult.Success && result.pairs.size != rows.size) {
+            return ExtractionResult.Failure("Claude returned a different number of words. Try again.")
+        }
+        return result
+    }
+
     private suspend fun send(
         apiKey: String,
         content: JsonArrayBuilder.() -> Unit,

@@ -16,6 +16,7 @@ import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -81,6 +82,7 @@ class WordListActivity : AnkiActivity() {
             layoutManager = LinearLayoutManager(this@WordListActivity)
             adapter = this@WordListActivity.adapter
         }
+        findViewById<View>(R.id.add_fab).setOnClickListener { AddCards.show(this, playlist) }
         columns = WordColumn.enabled(this)
         buildHeader()
     }
@@ -198,7 +200,6 @@ class WordListActivity : AnkiActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, MENU_COLUMNS, 0, "Columns")
         if (playlist != null) {
-            menu.add(0, MENU_CHOOSE, 1, "Choose words")
             menu.add(0, MENU_SUBDECK, 2, "Add subdeck")
             menu.add(0, MENU_RENAME, 3, "Rename deck")
             menu.add(0, MENU_DELETE, 4, "Delete deck")
@@ -210,7 +211,6 @@ class WordListActivity : AnkiActivity() {
         val p = playlist
         when (item.itemId) {
             MENU_COLUMNS -> showColumnsDialog()
-            MENU_CHOOSE -> if (p != null) startActivity(WordPickerActivity.getIntent(this, p, isNew = false))
             MENU_SUBDECK -> if (p != null) PlaylistActions.newDeck(this, p)
             MENU_RENAME ->
                 if (p != null) {
@@ -331,7 +331,6 @@ class WordListActivity : AnkiActivity() {
     companion object {
         private const val EXTRA_PLAYLIST = "playlist"
         private const val MENU_COLUMNS = 1
-        private const val MENU_CHOOSE = 2
         private const val MENU_SUBDECK = 3
         private const val MENU_RENAME = 4
         private const val MENU_DELETE = 5

@@ -12,11 +12,9 @@ import android.view.View
 import android.widget.LinearLayout
 import androidx.annotation.VisibleForTesting
 import com.google.android.material.color.MaterialColors
-import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.databinding.ActivityHomescreenBinding
 import com.ichi2.anki.databinding.IncludeFloatingAddButtonBinding
 import com.ichi2.anki.ui.DoubleTapListener
-import com.ichi2.anki.ui.internationalization.sentenceCase
 import timber.log.Timber
 
 class DeckPickerFloatingActionMenu(
@@ -281,6 +279,8 @@ class DeckPickerFloatingActionMenu(
         }
 
     init {
+        binding.fabMain.text = "Add cards"
+        binding.fabMain.contentDescription = "Add cards"
         binding.fabMain.isExtended = false
         binding.fabMain.setOnTouchListener(
             object : DoubleTapListener(context) {
@@ -334,7 +334,7 @@ class DeckPickerFloatingActionMenu(
                 }
             }
         binding.addDeckButton.apply {
-            text = with(context) { TR.sentenceCase.createDeck }
+            text = "Add deck"
             contentDescription = text
         }
         binding.addDeckButton.setOnClickListener(addDeckListener)
@@ -416,7 +416,9 @@ class DeckPickerFloatingActionMenu(
      * @see DeckPicker.addNote
      */
     private fun addNote() {
-        deckPicker.addNote()
+        // Tibetan fork: "Add cards" chooser (adds to the Library)
+        com.ichi2.anki.tibetan.AddCards
+            .show(deckPicker, null)
     }
 
     fun interface FloatingActionBarToggleListener {
