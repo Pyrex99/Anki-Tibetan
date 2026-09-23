@@ -397,6 +397,8 @@ class DeckPickerViewModel :
                         try {
                             com.ichi2.anki.tibetan.Library
                                 .migrateIfNeeded(this)
+                            com.ichi2.anki.tibetan.WordListImport
+                                .importPending(this, com.ichi2.anki.AnkiDroidApp.instance)
                             com.ichi2.anki.tibetan.StudyDirection
                                 .sync(this)
                             com.ichi2.anki.tibetan.CardStyle

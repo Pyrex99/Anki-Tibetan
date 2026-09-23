@@ -279,6 +279,17 @@ object Library {
         if (toRemove.isNotEmpty()) col.tags.bulkRemove(toRemove.toList(), tagsIncludingChildren(col, playlist))
     }
 
+    /** Adds words to [playlist], creating the deck (and its parent) if needed. */
+    fun addToDeck(
+        col: Collection,
+        playlist: String,
+        noteIds: List<NoteId>,
+    ) {
+        val name = playlist.split("::").take(2).joinToString("::") { cleanName(it) }
+        addPlaylistName(col, name)
+        addWords(col, name, noteIds)
+    }
+
     fun addWords(
         col: Collection,
         playlist: String,
