@@ -192,6 +192,14 @@ abstract class NavigationDrawerActivity(
                     }, 100)
                 }
 
+                override fun onDrawerStateChanged(newState: Int) {
+                    super.onDrawerStateChanged(newState)
+                    // Tibetan fork: the second item is named after the deck you were last in
+                    navigationView?.menu?.findItem(R.id.nav_browser)?.title =
+                        com.ichi2.anki.tibetan.WordListActivity
+                            .lastDeckLabel(this@NavigationDrawerActivity)
+                }
+
                 override fun onDrawerOpened(drawerView: View) {
                     super.onDrawerOpened(drawerView)
                     invalidateOptionsMenu()
@@ -344,11 +352,15 @@ abstract class NavigationDrawerActivity(
                     }
 
                     R.id.nav_browser -> {
-                        Timber.i("Navigating to card browser")
-                        // Tibetan fork: "Browse" is the Library word list
+                        Timber.i("Navigating to current deck")
+                        // Tibetan fork: back to the word list of the deck you were last in
                         startActivity(
                             com.ichi2.anki.tibetan.WordListActivity
-                                .getIntent(this@NavigationDrawerActivity, null),
+                                .getIntent(
+                                    this@NavigationDrawerActivity,
+                                    com.ichi2.anki.tibetan.WordListActivity
+                                        .lastDeck(this@NavigationDrawerActivity),
+                                ).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
                         )
                     }
 

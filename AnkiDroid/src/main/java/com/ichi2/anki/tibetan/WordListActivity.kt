@@ -22,6 +22,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.edit
 import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -31,6 +32,7 @@ import com.ichi2.anki.AnkiActivity
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.R
 import com.ichi2.anki.Reviewer
+import com.ichi2.anki.common.preferences.sharedPrefs
 import com.ichi2.anki.common.utils.android.showThemedToast
 import com.ichi2.anki.launchCatchingTask
 import com.ichi2.anki.noteeditor.NoteEditorLauncher
@@ -89,6 +91,7 @@ class WordListActivity : AnkiActivity() {
 
     override fun onResume() {
         super.onResume()
+        sharedPrefs().edit { putString(PREF_LAST_DECK, playlist.orEmpty()) }
         reload()
     }
 
@@ -98,6 +101,16 @@ class WordListActivity : AnkiActivity() {
 
     private fun reload() {
         launchCatchingTask {
+            // the deck may have been renamed or deleted elsewhere
+            val p = playlist
+            if (p != null && !withCol { Library.exists(this, p) }) {
+                playlist = null
+                intent.putExtra(EXTRA_PLAYLIST, null as String?)
+                sharedPrefs().edit { putString(PREF_LAST_DECK, "") }
+                updateTitle()
+                studyButton.text = "Start Roundup"
+                invalidateOptionsMenu()
+            }
             val (loaded, direction) =
                 withCol {
                     Library.endStudySession(this)
@@ -321,10 +334,22 @@ class WordListActivity : AnkiActivity() {
 
     companion object {
         private const val EXTRA_PLAYLIST = "playlist"
+        private const val PREF_LAST_DECK = "tibetanLastDeck"
         private const val MENU_COLUMNS = 1
         private const val MENU_SUBDECK = 3
         private const val MENU_RENAME = 4
         private const val MENU_DELETE = 5
+
+        /** The deck whose word list was open most recently; null = Library. */
+        fun lastDeck(context: Context): String? =
+            context
+                .sharedPrefs()
+                .getString(PREF_LAST_DECK, "")
+                .orEmpty()
+                .ifEmpty { null }
+
+        /** Side-menu label for [lastDeck], e.g. "Verbs › Irregular". */
+        fun lastDeckLabel(context: Context): String = lastDeck(context)?.let { Library.displayName(it) } ?: Library.LIBRARY_NAME
 
         /** @param playlist null for the Library */
         fun getIntent(
