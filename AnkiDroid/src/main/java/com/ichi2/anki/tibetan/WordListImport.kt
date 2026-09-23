@@ -9,7 +9,8 @@
  * {
  *   "cards": [
  *     { "tibetan": "…", "english": "…", "decks": ["Verbs", "Verbs::Irregular"],
- *       "updateNoteId": 123 }   // optional: overwrite this existing word instead of adding
+ *       "updateNoteId": 123,    // optional: overwrite this existing word instead of adding
+ *       "overwrite": true }     // optional: if the Tibetan side already exists, replace its English side
  *   ]
  * }
  * A card whose Tibetan side exactly matches an existing word isn't duplicated;
@@ -83,7 +84,17 @@ object WordListImport {
                         col.updateNote(note)
                         updateId
                     }
-                    tibetan in existingByFront -> existingByFront.getValue(tibetan)
+                    tibetan in existingByFront -> {
+                        val id = existingByFront.getValue(tibetan)
+                        if (card.optBoolean("overwrite", false)) {
+                            val note = col.getNote(id)
+                            if (note.fields[1] != english) {
+                                note.setField(1, english)
+                                col.updateNote(note)
+                            }
+                        }
+                        id
+                    }
                     else -> {
                         val note = Note.fromNotetypeId(col, notetypeId)
                         note.setField(0, tibetan)
