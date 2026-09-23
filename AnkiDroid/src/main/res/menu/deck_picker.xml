@@ -27,7 +27,8 @@
     <item
         android:id="@+id/action_study_direction"
         android:title="@string/study_direction"
-        ankidroid:showAsAction="never"/>
+        ankidroid:showAsAction="never"
+        android:visible="false"/>
     <item
         android:id="@+id/action_add_from_photo"
         android:icon="@drawable/ic_camera"
