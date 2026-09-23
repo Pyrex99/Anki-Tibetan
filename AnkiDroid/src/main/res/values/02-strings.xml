@@ -467,5 +467,10 @@ opening the system text to speech settings fails">Failed to open text to speech 
     <string name="photo_import_field_english">English</string>
     <string name="photo_import_none_selected">No cards selected.</string>
     <string name="photo_import_notetype_missing">Could not find the Basic note type.</string>
+    <string name="study_direction">Study direction</string>
+    <string name="ask_claude_for_words">Ask Claude for words</string>
+    <string name="ask_claude_hint">e.g. give me ten new verbs to learn</string>
+    <string name="ask_claude_thinking">Asking Claude…</string>
+    <string name="ask_claude_button">Ask</string>
 </resources>
 

@@ -1300,13 +1300,23 @@ open class DeckPicker :
             }
             R.id.action_add_from_photo -> {
                 Timber.i("DeckPicker:: Add cards from photo pressed")
-                launchCatchingTask {
-                    val deckId = withCol { decks.selected() }
-                    startActivity(
-                        com.ichi2.anki.tibetan.PhotoVocabImportActivity
-                            .getIntent(this@DeckPicker, deckId),
-                    )
-                }
+                startActivity(
+                    com.ichi2.anki.tibetan.PhotoVocabImportActivity
+                        .getIntent(this, com.ichi2.anki.tibetan.PhotoVocabImportActivity.Mode.PHOTO),
+                )
+                return true
+            }
+            R.id.action_ask_claude -> {
+                Timber.i("DeckPicker:: Ask Claude pressed")
+                startActivity(
+                    com.ichi2.anki.tibetan.PhotoVocabImportActivity
+                        .getIntent(this, com.ichi2.anki.tibetan.PhotoVocabImportActivity.Mode.ASK),
+                )
+                return true
+            }
+            R.id.action_study_direction -> {
+                Timber.i("DeckPicker:: Study direction pressed")
+                showStudyDirectionDialog()
                 return true
             }
             R.id.action_check_database -> {
@@ -2045,6 +2055,37 @@ open class DeckPicker :
             updateUi()
         } else {
             onDeckCompleted()
+        }
+    }
+
+    /** Tibetan fork: choose Tibetan first / English first / Mix */
+    private fun showStudyDirectionDialog() {
+        launchCatchingTask {
+            val directions = com.ichi2.anki.tibetan.StudyDirection.entries
+            val current =
+                withCol {
+                    com.ichi2.anki.tibetan.StudyDirection
+                        .get(this)
+                }
+            AlertDialog
+                .Builder(this@DeckPicker)
+                .setTitle(R.string.study_direction)
+                .setSingleChoiceItems(
+                    directions.map { it.label }.toTypedArray(),
+                    directions.indexOf(current),
+                ) { dialog, which ->
+                    dialog.dismiss()
+                    launchCatchingTask {
+                        withProgress {
+                            withCol {
+                                com.ichi2.anki.tibetan.StudyDirection
+                                    .set(this, directions[which])
+                            }
+                        }
+                        updateDeckList()
+                    }
+                }.setNegativeButton(R.string.dialog_cancel, null)
+                .show()
         }
     }
 

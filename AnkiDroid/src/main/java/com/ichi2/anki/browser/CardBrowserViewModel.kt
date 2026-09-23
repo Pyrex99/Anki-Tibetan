@@ -471,7 +471,11 @@ class CardBrowserViewModel(
             Timber.d("updated headings for %d columns", activeColumns.count)
             activeColumns.columns.map {
                 ColumnHeading(
-                    label = allColumns[it.ankiColumnKey]!!.getLabel(cardsOrNotes),
+                    label =
+                        com.ichi2.anki.tibetan.TibetanBrowserColumns.label(
+                            it.ankiColumnKey,
+                            allColumns[it.ankiColumnKey]!!.getLabel(cardsOrNotes),
+                        ),
                     ankiColumnKey = it.ankiColumnKey,
                 )
             }
@@ -900,7 +904,13 @@ class CardBrowserViewModel(
      * @throws BackendException if the row is deleted
      */
     fun transformBrowserRow(id: CardOrNoteId): Pair<BrowserRow, Boolean> {
-        val row = CollectionManager.getBackend().browserRowForId(id.cardOrNoteId)
+        val row =
+            com.ichi2.anki.tibetan.TibetanBrowserColumns.transform(
+                CollectionManager.getBackend().browserRowForId(id.cardOrNoteId),
+                activeColumns,
+                id.cardOrNoteId,
+                cardsOrNotes,
+            )
         val isSelected = selectedRows.contains(id)
         return Pair(row, isSelected)
     }

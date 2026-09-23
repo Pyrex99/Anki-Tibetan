@@ -24,7 +24,6 @@ import com.ichi2.anki.dialogs.DeckPickerContextMenu
 import com.ichi2.anki.dialogs.DeckPickerContextMenuResult
 import com.ichi2.anki.dialogs.setDeckPickerContextMenuResult
 import com.ichi2.anki.libanki.DeckId
-import com.ichi2.anki.settings.Prefs
 
 /**
  * MenuContentProvider implementation for DeckPicker for providing deck specific context menu items.
@@ -92,6 +91,8 @@ class DeckPickerMenuContentProvider(
             isDynamic: Boolean,
             hasBuriedInDeck: Boolean,
         ): List<DeckPickerContextMenu.DeckPickerContextMenuOption> =
+            // Tibetan fork: only the essentials. Subdecks, deck options, custom study,
+            // export, shortcuts, descriptions and reminders are hidden to keep this simple.
             mutableListOf<DeckPickerContextMenu.DeckPickerContextMenuOption>().apply {
                 add(DeckPickerContextMenu.DeckPickerContextMenuOption.ADD_CARD)
                 add(DeckPickerContextMenu.DeckPickerContextMenuOption.BROWSE_CARDS)
@@ -100,23 +101,8 @@ class DeckPickerMenuContentProvider(
                     add(DeckPickerContextMenu.DeckPickerContextMenuOption.CUSTOM_STUDY_EMPTY)
                 }
                 add(DeckPickerContextMenu.DeckPickerContextMenuOption.RENAME_DECK)
-                if (!isDynamic) {
-                    add(DeckPickerContextMenu.DeckPickerContextMenuOption.CREATE_SUBDECK)
-                }
-                add(DeckPickerContextMenu.DeckPickerContextMenuOption.DECK_OPTIONS)
-                if (!isDynamic) {
-                    add(DeckPickerContextMenu.DeckPickerContextMenuOption.CUSTOM_STUDY)
-                }
-                add(DeckPickerContextMenu.DeckPickerContextMenuOption.EXPORT_DECK)
                 if (hasBuriedInDeck) {
                     add(DeckPickerContextMenu.DeckPickerContextMenuOption.UNBURY)
-                }
-                add(DeckPickerContextMenu.DeckPickerContextMenuOption.CREATE_SHORTCUT)
-                if (!isDynamic) {
-                    add(DeckPickerContextMenu.DeckPickerContextMenuOption.EDIT_DESCRIPTION)
-                }
-                if (Prefs.newReviewRemindersEnabled) {
-                    add(DeckPickerContextMenu.DeckPickerContextMenuOption.SCHEDULE_REMINDERS)
                 }
                 add(DeckPickerContextMenu.DeckPickerContextMenuOption.DELETE_DECK)
             }

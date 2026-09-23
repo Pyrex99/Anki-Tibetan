@@ -1,9 +1,11 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Photo → Tibetan vocabulary card import. Capture/pick a photo of a textbook
- * vocabulary page, extract Tibetan/English pairs via [PhotoVocabExtractor],
- * let the user review/edit them, and add them as Basic notes.
+ * Tibetan vocabulary card import, in two modes:
+ *  - [Mode.PHOTO]: capture/pick a photo of a textbook vocabulary page
+ *  - [Mode.ASK]: ask Claude for words ("give me ten new verbs to learn")
+ * Pairs come from [ClaudeVocab]; the user reviews/edits them, and they are
+ * added as Basic notes to the Default deck.
  */
 
 package com.ichi2.anki.tibetan
@@ -20,6 +22,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.TextView
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
@@ -34,7 +37,7 @@ import com.ichi2.anki.R
 import com.ichi2.anki.common.preferences.sharedPrefs
 import com.ichi2.anki.common.utils.android.showThemedToast
 import com.ichi2.anki.launchCatchingTask
-import com.ichi2.anki.libanki.DeckId
+import com.ichi2.anki.libanki.Consts
 import com.ichi2.anki.libanki.Note
 import com.ichi2.anki.withProgress
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +47,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 class PhotoVocabImportActivity : AnkiActivity() {
-    private var deckId: DeckId = 0L
+    private lateinit var mode: Mode
     private var apiKey: String = ""
     private var cameraImageUri: Uri? = null
 
@@ -76,16 +79,19 @@ class PhotoVocabImportActivity : AnkiActivity() {
         if (showedActivityFailedScreen(savedInstanceState)) return
         setContentView(R.layout.activity_photo_vocab_import)
 
-        deckId = intent.getLongExtra(EXTRA_DECK_ID, 0L)
+        mode = Mode.entries[intent.getIntExtra(EXTRA_MODE, Mode.PHOTO.ordinal)]
         apiKey = sharedPrefs().getString(getString(R.string.anthropic_api_key_pref), "").orEmpty().trim()
 
         enableToolbar().apply {
             setDisplayHomeAsUpEnabled(true)
-            setTitle(R.string.photo_import_title)
+            setTitle(if (mode == Mode.ASK) R.string.ask_claude_for_words else R.string.photo_import_title)
         }
         findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
 
         progressContainer = findViewById(R.id.progress_container)
+        findViewById<TextView>(R.id.progress_text).setText(
+            if (mode == Mode.ASK) R.string.ask_claude_thinking else R.string.photo_import_reading,
+        )
         addButton = findViewById(R.id.add_button)
         addButton.setOnClickListener { addSelectedCards() }
 
@@ -103,7 +109,47 @@ class PhotoVocabImportActivity : AnkiActivity() {
         }
 
         if (savedInstanceState == null) {
-            showSourceChooser()
+            when (mode) {
+                Mode.PHOTO -> showSourceChooser()
+                Mode.ASK -> showAskDialog()
+            }
+        }
+    }
+
+    private fun showAskDialog() {
+        val input =
+            EditText(this).apply {
+                setHint(R.string.ask_claude_hint)
+                minLines = 2
+            }
+        val container =
+            android.widget.FrameLayout(this).apply {
+                val pad = (20 * resources.displayMetrics.density).toInt()
+                setPadding(pad, pad / 2, pad, 0)
+                addView(input)
+            }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.ask_claude_for_words)
+            .setView(container)
+            .setPositiveButton(R.string.ask_claude_button) { _, _ ->
+                val request = input.text.toString()
+                if (request.isBlank()) finishIfEmpty() else askClaude(request)
+            }.setNegativeButton(R.string.dialog_cancel) { _, _ -> finishIfEmpty() }
+            .setOnCancelListener { finishIfEmpty() }
+            .show()
+    }
+
+    private fun askClaude(request: String) {
+        launchCatchingTask {
+            progressContainer.visibility = View.VISIBLE
+            val result =
+                try {
+                    val knownWords = withCol { db.queryStringList("select sfld from notes") }
+                    ClaudeVocab.suggest(request, knownWords, apiKey)
+                } finally {
+                    progressContainer.visibility = View.GONE
+                }
+            showResult(result)
         }
     }
 
@@ -141,19 +187,23 @@ class PhotoVocabImportActivity : AnkiActivity() {
             val result =
                 try {
                     val bytes = withContext(Dispatchers.IO) { loadDownscaledJpeg(uri) }
-                    PhotoVocabExtractor.extract(bytes, "image/jpeg", apiKey)
+                    ClaudeVocab.extractFromPhoto(bytes, "image/jpeg", apiKey)
                 } finally {
                     progressContainer.visibility = View.GONE
                 }
-            when (result) {
-                is ExtractionResult.Success -> {
-                    adapter.setRows(result.pairs.map { Row(it.tibetan, it.english) })
-                    updateAddButton()
-                }
-                is ExtractionResult.Failure -> {
-                    showThemedToast(this@PhotoVocabImportActivity, result.message, false)
-                    finishIfEmpty()
-                }
+            showResult(result)
+        }
+    }
+
+    private fun showResult(result: ExtractionResult) {
+        when (result) {
+            is ExtractionResult.Success -> {
+                adapter.setRows(result.pairs.map { Row(it.tibetan, it.english) })
+                updateAddButton()
+            }
+            is ExtractionResult.Failure -> {
+                showThemedToast(this, result.message, false)
+                finishIfEmpty()
             }
         }
     }
@@ -219,7 +269,7 @@ class PhotoVocabImportActivity : AnkiActivity() {
                             val note = Note.fromNotetypeId(this, notetype.id)
                             note.setField(0, row.tibetan.trim())
                             note.setField(1, row.english.trim())
-                            addNote(note, deckId)
+                            addNote(note, Consts.DEFAULT_DECK_ID)
                         }
                         selected.size
                     }
@@ -341,16 +391,18 @@ class PhotoVocabImportActivity : AnkiActivity() {
         }
     }
 
+    enum class Mode { PHOTO, ASK }
+
     companion object {
-        private const val EXTRA_DECK_ID = "deckId"
+        private const val EXTRA_MODE = "mode"
         private const val MAX_EDGE = 1568
 
         fun getIntent(
             context: Context,
-            deckId: DeckId,
+            mode: Mode,
         ): Intent =
             Intent(context, PhotoVocabImportActivity::class.java).apply {
-                putExtra(EXTRA_DECK_ID, deckId)
+                putExtra(EXTRA_MODE, mode.ordinal)
             }
     }
 }

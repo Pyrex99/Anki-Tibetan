@@ -1,8 +1,13 @@
 /*
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Reads Tibetan vocabulary (Tibetan word + English meaning) from a photo of a
- * textbook page using the Anthropic Messages API (vision + structured output).
+ * Gets Tibetan vocabulary (Tibetan word + English meaning) from Claude via the
+ * Anthropic Messages API with structured JSON output. Two entry points:
+ *  - [extractFromPhoto]: read the words off a photo of a textbook page
+ *  - [suggest]: "give me ten new verbs to learn" style requests
+ *
+ * Verbs are always returned with their present / future / past stems on the
+ * Tibetan side, so irregular verbs are learned in full.
  */
 
 package com.ichi2.anki.tibetan
@@ -10,8 +15,10 @@ package com.ichi2.anki.tibetan
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArrayBuilder
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -25,14 +32,14 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
-/** A single extracted vocabulary entry. */
+/** A single vocabulary entry. */
 @Serializable
 data class VocabPair(
     val tibetan: String,
     val english: String,
 )
 
-/** Outcome of an extraction attempt. */
+/** Outcome of a Claude request. */
 sealed interface ExtractionResult {
     data class Success(
         val pairs: List<VocabPair>,
@@ -44,40 +51,105 @@ sealed interface ExtractionResult {
     ) : ExtractionResult
 }
 
-object PhotoVocabExtractor {
+object ClaudeVocab {
     private const val ENDPOINT = "https://api.anthropic.com/v1/messages"
-    private const val MODEL = "claude-opus-4-8"
+    private const val MODEL = "claude-opus-5"
     private const val ANTHROPIC_VERSION = "2023-06-01"
-    private const val MAX_TOKENS = 8000
+
+    /** Retries a safety-classifier refusal on Anthropic's recommended fallback model. */
+    private const val FALLBACK_BETA = "server-side-fallback-2026-07-01"
+    private const val MAX_TOKENS = 16000
+
+    /** How many existing words to send so Claude can avoid suggesting duplicates. */
+    private const val MAX_KNOWN_WORDS = 3000
 
     private val client: OkHttpClient by lazy {
         OkHttpClient
             .Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS)
+            .readTimeout(300, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
             .build()
     }
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private const val PROMPT =
+    private const val SYSTEM_PROMPT =
+        "You help an English speaker build flashcards for learning Tibetan. " +
+            "Each card has a Tibetan side (Tibetan Unicode script) and an English side.\n\n" +
+            "Verbs: the Tibetan side must list the verb's present, future and past stems, in that order, " +
+            "separated by \" / \" (e.g. \"བྱེད་ / བྱ་ / བྱས་\"). If two stems are identical, repeat the form " +
+            "anyway so there are always three. Use the standard dictionary forms; if you are unsure of a stem, " +
+            "give your best attested form rather than inventing one. The English side for a verb starts with " +
+            "\"to\" (e.g. \"to do, to make\").\n\n" +
+            "Other words: the Tibetan side is just the word. If an English meaning has alternatives " +
+            "(e.g. \"girl / daughter\"), keep them together on the English side."
+
+    private const val PHOTO_PROMPT =
         "This is a photo of a page from a Tibetan language textbook listing vocabulary. " +
             "Extract every vocabulary entry. For each entry, return the Tibetan word exactly as " +
-            "written in Tibetan (Unicode) script, and its English meaning. " +
+            "written, and its English meaning. If the entry is a verb, give all three stems " +
+            "(present / future / past) even if the page only shows one. " +
             "Ignore item numbers, page numbers, section headings, and any explanatory notes — " +
-            "only the word/meaning pairs. If a meaning has alternatives (e.g. 'girl / daughter'), " +
-            "keep them together in the english field. Preserve the order they appear on the page."
+            "only the word/meaning pairs. Preserve the order they appear on the page."
 
     /**
+     * Reads vocabulary from a photo.
      * @param imageBytes raw bytes of the captured/selected image
      * @param mediaType e.g. "image/jpeg" or "image/png"
-     * @param apiKey the user's Anthropic API key
      */
-    suspend fun extract(
+    suspend fun extractFromPhoto(
         imageBytes: ByteArray,
         mediaType: String,
         apiKey: String,
+    ): ExtractionResult {
+        val base64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+        return send(apiKey) {
+            addJsonObject {
+                put("type", "image")
+                putJsonObject("source") {
+                    put("type", "base64")
+                    put("media_type", mediaType)
+                    put("data", base64)
+                }
+            }
+            addJsonObject {
+                put("type", "text")
+                put("text", PHOTO_PROMPT)
+            }
+        }
+    }
+
+    /**
+     * Suggests new vocabulary for a free-form request such as "give me ten new verbs to learn".
+     * @param knownWords Tibetan sides of cards already in the collection, to avoid duplicates
+     */
+    suspend fun suggest(
+        request: String,
+        knownWords: List<String>,
+        apiKey: String,
+    ): ExtractionResult {
+        val prompt =
+            buildString {
+                append("Suggest Tibetan vocabulary flashcards for this request:\n\n")
+                append(request.trim())
+                append("\n\nPrefer common, useful words for a learner. If the request doesn't say how many, suggest 10.")
+                if (knownWords.isNotEmpty()) {
+                    append("\n\nI already have cards for these words, so don't suggest them again:\n")
+                    knownWords.take(MAX_KNOWN_WORDS).joinTo(this, separator = "\n")
+                }
+            }
+        return send(apiKey) {
+            addJsonObject {
+                put("type", "text")
+                put("text", prompt)
+            }
+        }
+    }
+
+    private suspend fun send(
+        apiKey: String,
+        content: JsonArrayBuilder.() -> Unit,
     ): ExtractionResult =
         withContext(Dispatchers.IO) {
             if (apiKey.isBlank()) {
@@ -86,17 +158,15 @@ object PhotoVocabExtractor {
                 )
             }
 
-            val base64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
-            val requestJson = buildRequestBody(base64, mediaType)
-
             val request =
                 Request
                     .Builder()
                     .url(ENDPOINT)
                     .header("x-api-key", apiKey)
                     .header("anthropic-version", ANTHROPIC_VERSION)
+                    .header("anthropic-beta", FALLBACK_BETA)
                     .header("content-type", "application/json")
-                    .post(requestJson.toRequestBody("application/json".toMediaType()))
+                    .post(buildRequestBody(content).toRequestBody("application/json".toMediaType()))
                     .build()
 
             try {
@@ -111,16 +181,13 @@ object PhotoVocabExtractor {
                     parseResponse(body)
                 }
             } catch (e: Exception) {
-                Timber.w(e, "Photo vocab extraction failed")
+                Timber.w(e, "Claude vocab request failed")
                 ExtractionResult.Failure("Network error: ${e.localizedMessage}")
             }
         }
 
-    /** Builds the Messages API request: image + prompt, with a forced JSON-array output schema. */
-    private fun buildRequestBody(
-        base64Image: String,
-        mediaType: String,
-    ): String {
+    /** Builds the Messages API request with a forced `{cards:[{tibetan,english}]}` output schema. */
+    private fun buildRequestBody(content: JsonArrayBuilder.() -> Unit): String {
         val cardSchema =
             buildJsonObject {
                 put("type", "object")
@@ -139,6 +206,8 @@ object PhotoVocabExtractor {
             buildJsonObject {
                 put("model", MODEL)
                 put("max_tokens", MAX_TOKENS)
+                put("fallbacks", "default")
+                put("system", SYSTEM_PROMPT)
                 putJsonObject("output_config") {
                     putJsonObject("format") {
                         put("type", "json_schema")
@@ -158,20 +227,7 @@ object PhotoVocabExtractor {
                 putJsonArray("messages") {
                     addJsonObject {
                         put("role", "user")
-                        putJsonArray("content") {
-                            addJsonObject {
-                                put("type", "image")
-                                putJsonObject("source") {
-                                    put("type", "base64")
-                                    put("media_type", mediaType)
-                                    put("data", base64Image)
-                                }
-                            }
-                            addJsonObject {
-                                put("type", "text")
-                                put("text", PROMPT)
-                            }
-                        }
+                        putJsonArray("content", content)
                     }
                 }
             }
@@ -181,6 +237,8 @@ object PhotoVocabExtractor {
     @Serializable
     private data class MessagesResponse(
         val content: List<ContentBlock> = emptyList(),
+        @SerialName("stop_reason")
+        val stopReason: String? = null,
     )
 
     @Serializable
@@ -202,6 +260,10 @@ object PhotoVocabExtractor {
                 Timber.w(e, "Could not parse Anthropic response envelope")
                 return ExtractionResult.Failure("Unexpected response from the API.")
             }
+        when (parsed.stopReason) {
+            "refusal" -> return ExtractionResult.Failure("Claude declined this request. Try rephrasing it.")
+            "max_tokens" -> return ExtractionResult.Failure("Too many words at once. Try asking for fewer.")
+        }
         val text = parsed.content.firstOrNull { it.type == "text" }?.text
         if (text.isNullOrBlank()) {
             return ExtractionResult.Failure("The API returned no text.")
@@ -210,15 +272,15 @@ object PhotoVocabExtractor {
             try {
                 json.decodeFromString<CardsWrapper>(text)
             } catch (e: Exception) {
-                Timber.w(e, "Could not parse extracted cards JSON: %s", text)
-                return ExtractionResult.Failure("Could not read the words from this image.")
+                Timber.w(e, "Could not parse cards JSON: %s", text)
+                return ExtractionResult.Failure("Could not read the words from Claude's reply.")
             }
         val pairs =
             wrapper.cards
                 .map { VocabPair(it.tibetan.trim(), it.english.trim()) }
                 .filter { it.tibetan.isNotEmpty() && it.english.isNotEmpty() }
         return if (pairs.isEmpty()) {
-            ExtractionResult.Failure("No vocabulary found in this image.")
+            ExtractionResult.Failure("No vocabulary found.")
         } else {
             ExtractionResult.Success(pairs)
         }
@@ -230,7 +292,7 @@ object PhotoVocabExtractor {
     ): String =
         when (code) {
             401 -> "Invalid API key. Check it in Settings → General."
-            400 -> "The image could not be processed (bad request)."
+            400 -> "The request could not be processed (bad request)."
             413 -> "The image is too large. Try a smaller photo."
             429 -> "Rate limited by the API. Wait a moment and try again."
             in 500..599 -> "The API is temporarily unavailable. Try again shortly."
